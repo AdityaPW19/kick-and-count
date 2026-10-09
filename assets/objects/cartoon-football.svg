@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="white" cx="30%" cy="23%" r="78%">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset=".62" stop-color="#f1faff"/>
+      <stop offset="1" stop-color="#a7c9ed"/>
+    </radialGradient>
+    <linearGradient id="patch" x2=".5" y2="1">
+      <stop stop-color="#354966"/>
+      <stop offset="1" stop-color="#0c1934"/>
+    </linearGradient>
+    <clipPath id="ball"><circle cx="50" cy="50" r="45"/></clipPath>
+  </defs>
+  <circle cx="50" cy="50" r="46" fill="url(#white)" stroke="#11294b" stroke-width="5"/>
+  <g clip-path="url(#ball)" stroke-linejoin="round">
+    <path d="M50 31 50 13M68 44 86 36M61 65 73 84M39 65 27 84M32 44 14 36M32 7 50 13 68 7M86 36 98 51M73 84 58 97M27 84 42 97M14 36 2 51" fill="none" stroke="#8198b4" stroke-width="2.5"/>
+    <g fill="url(#patch)" stroke="#152b49" stroke-width="2.5">
+      <path d="M50 30 69 44 61 66 39 66 31 44Z"/>
+      <path d="M32 0 68 0 66 8 50 15 34 8Z"/>
+      <path d="M91 19 104 43 96 55 84 49 82 33Z"/>
+      <path d="M9 19 -4 43 4 55 16 49 18 33Z"/>
+      <path d="M72 78 87 80 88 95 61 106 57 92Z"/>
+      <path d="M28 78 13 80 12 95 39 106 43 92Z"/>
+    </g>
+    <path d="M39 44 50 36 61 44" fill="none" stroke="#627894" stroke-width="3" stroke-linecap="round" opacity=".65"/>
+    <ellipse cx="29" cy="24" rx="11" ry="5" transform="rotate(-38 29 24)" fill="#fff" opacity=".9"/>
+    <path d="M24 77Q50 96 77 74" fill="none" stroke="#81a9d6" stroke-width="4" stroke-linecap="round" opacity=".5"/>
+  </g>
+</svg>
