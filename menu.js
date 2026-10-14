@@ -206,7 +206,7 @@
 
   async function preloadAssets() {
     const sources = [
-      "assets/bg/main-menu-bg.png", "assets/animations/sparky-kicking.png",
+      "assets/bg/main-menu-bg.png", "assets/animations/sparky-sprites/action-emotes/sparky-smirk-kicking.png",
       "assets/objects/football.png", "assets/graphics/power-football.png",
       "assets/graphics/title-art.png", "assets/ui/play-button.png",
       "assets/graphics/sparky-suui.png"

@@ -17,7 +17,7 @@ button { font: inherit; }
 .stage img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .sparky-enter { position: absolute; left: 85px; top: 145px; width: 520px; height: 520px; transform: translateX(var(--sparky-offset, -720px)); z-index: 2; }
 .sparky-hover { position: relative; width: 100%; height: 100%; }
-.sparky { position: absolute; inset: 0; background: url("assets/animations/sparky-kicking.png") left center / 200% 100% no-repeat; }
+.sparky { position: absolute; inset: 0; background: url("assets/animations/sparky-sprites/action-emotes/sparky-smirk-kicking.png") left center / 200% 100% no-repeat; }
 .sparky.is-kicking { background-position: right center; }
 .sparky.is-suui { background-image: url("assets/graphics/sparky-suui.png"); background-position: left center; transform-origin: 50% 96%; }
 .sparky.is-suui.is-suui-open { background-position: right center; }
