@@ -6,8 +6,12 @@
 	<meta name="theme-color" content="#086ac4">
 	<title>Kick &amp; Count with Sparky</title>
 	<link rel="preload" href="assets/bg/main-menu-bg.png" as="image">
+	<link rel="preload" href="assets/fonts/fredoka-400.ttf" as="font" type="font/ttf" crossorigin>
+	<link rel="preload" href="assets/fonts/fredoka-700.ttf" as="font" type="font/ttf" crossorigin>
 	<link rel="stylesheet" href="menu.css">
+	<link rel="stylesheet" href="scene.css">
 	<script src="menu.js" defer></script>
+	<script src="scene.js" defer></script>
 </head>
 <body>
 	<main class="menu" aria-label="Kick and Count with Sparky main menu" aria-busy="true">
@@ -65,6 +69,62 @@
 		<div class="loading" id="loading" role="status"><span></span>Warming up…</div>
 		<p class="sr-only" id="menu-status" role="status" aria-live="polite"></p>
 	</main>
+
+	<section class="game-scene" id="game-scene" aria-label="Kick and Count field — scene systems preview" hidden>
+		<div class="scene-backdrop" aria-hidden="true"></div>
+		<div class="scene-frame" id="scene-frame">
+			<div class="scene-camera" id="scene-camera">
+				<div class="field-world" aria-hidden="true"></div>
+				<div class="goal-zone" data-zone="Goal zone">
+					<div class="goal-shadow" aria-hidden="true"></div>
+					<img src="assets/goalpost/goalpost.png" alt="Football goal" draggable="false">
+				</div>
+				<div class="quantity-display" id="quantity-display" data-zone="Quantity display" role="img" aria-label="Four footballs"></div>
+				<div class="scene-sparky" id="scene-sparky" data-zone="Sparky / close-up anchor">
+					<div class="sparky-floor-shadow" aria-hidden="true"></div>
+					<img src="assets/animations/sparky-sprites/emotes/sparky_proud_cocky_hand_gesture.png" alt="Sparky, your football coach" draggable="false">
+				</div>
+				<div class="ball-choice-zone" id="ball-choice-zone" data-zone="Football choices · up to six" role="group" aria-label="Test footballs"></div>
+			</div>
+		</div>
+		<div class="scene-hud" id="scene-hud">
+			<div class="scene-preview-label"><span></span> SCENE PREVIEW <small id="shot-label">WIDE SHOT</small></div>
+			<button class="scene-pause-button" id="scene-pause" type="button" aria-label="Pause">
+				<img src="assets/ui/pause-cta.png" alt="" draggable="false">
+			</button>
+			<div class="scene-lab" id="scene-lab">
+				<button class="lab-toggle" id="lab-toggle" type="button" aria-expanded="false" aria-controls="lab-controls">Scene lab <span aria-hidden="true">⚙</span></button>
+				<div class="lab-controls" id="lab-controls" hidden>
+					<div class="lab-heading">DIRECTOR’S DESK <span>Temporary test controls</span></div>
+					<div class="lab-row" role="group" aria-label="Camera shots">
+						<button type="button" data-shot="wide" aria-pressed="true">Wide</button>
+						<button type="button" data-shot="close" aria-pressed="false">Sparky close-up</button>
+						<button type="button" data-shot="dramatic" aria-pressed="false">Dramatic</button>
+					</div>
+					<label class="lab-slider">Football quantity <output id="count-output">4</output><input id="display-count" type="range" min="1" max="20" value="4"></label>
+					<label class="lab-slider">Display width <output id="width-output">420</output><input id="display-width" type="range" min="300" max="620" step="10" value="420"></label>
+					<div class="lab-row" role="group" aria-label="Display styles">
+						<button type="button" data-display="count" aria-pressed="true">Count</button>
+						<button type="button" data-display="message" aria-pressed="false">Message</button>
+						<button type="button" data-display="celebrate" aria-pressed="false">Celebrate</button>
+					</div>
+					<label class="zone-toggle"><input type="checkbox" id="show-zones"> Show scene areas</label>
+					<label class="lab-slider">Test balls <output id="ball-count-output">3</output><input id="test-ball-count" type="range" min="3" max="6" value="3"></label>
+					<div class="lab-row"><button type="button" id="replay-ball-entry">Replay ball entrance</button></div>
+				</div>
+			</div>
+		</div>
+		<div class="scene-pause-overlay" id="scene-pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden>
+			<div class="scene-pause-card">
+				<span class="pause-eyebrow">TIME OUT!</span>
+				<h2 id="pause-title">Catch your breath.</h2>
+				<p>The pitch will be right here.</p>
+				<button type="button" id="scene-resume">Back to the pitch <span aria-hidden="true">▶</span></button>
+				<button class="pause-secondary" type="button" id="scene-wide">Resume in wide shot</button>
+			</div>
+		</div>
+		<p class="sr-only" id="scene-status" role="status" aria-live="polite"></p>
+	</section>
 
 	<section class="rotate-overlay" aria-labelledby="rotate-title">
 		<div class="rotate-card">
