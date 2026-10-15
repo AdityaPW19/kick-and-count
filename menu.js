@@ -329,6 +329,29 @@
     playEnter.hidden = true;
   }
 
+  function startLoadingMessages() {
+    const message = document.createElement("p");
+    message.className = "loader-message"; message.setAttribute("aria-hidden", "true");
+    const messages = ["Loading the fun…", "Getting the pitch ready…", "Warming up the footballs…", "Calling Messi…", "Lacing up Sparky’s boots…", "Adding a little goal magic…"];
+    message.textContent = messages[0]; gameLoader.append(message);
+    let raf, last, elapsed = 0, index = 0;
+    const frame = now => {
+      if (last !== undefined && !shouldPause() && !message.hidden && !gameLoader.hidden) {
+        elapsed += Math.min(100, now - last);
+        if (elapsed >= 1500) {
+          elapsed = 0; index = (index + 1) % messages.length;
+          message.textContent = messages[index];
+          message.classList.remove("is-changing");
+          void message.offsetWidth;
+          message.classList.add("is-changing");
+        }
+      }
+      last = now; raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return { message, stop() { cancelAnimationFrame(raf); message.remove(); } };
+  }
+
   async function revealGameLoader() {
     gameLoader.style.opacity = "0";
     gameLoader.hidden = false;
@@ -391,6 +414,7 @@
     status.textContent = "Loading";
     // Start real loading alongside the exit choreography; retain failures until awaited.
     const nextAssets = prepareNextScene().then(() => ({ ok: true }), error => ({ error }));
+    const loadingMessages = startLoadingMessages();
 
     if (reducedMotion.matches) {
       titleEnter.hidden = true;
@@ -408,6 +432,7 @@
     menu.classList.add("is-loading");
     let result = await nextAssets;
     while (result.error) {
+      loadingMessages.message.hidden = true;
       console.error("Next scene assets unavailable:", result.error);
       status.textContent = "Some assets could not load. Check your connection and retry.";
       gameLoader.setAttribute("aria-label", status.textContent);
@@ -422,12 +447,14 @@
       message.remove();
       gameLoader.setAttribute("aria-label", "Loading");
       status.textContent = "Retrying asset loading";
+      loadingMessages.message.hidden = false;
       result = await prepareNextScene().then(() => ({ ok: true }), error => ({ error }));
     }
     // Give the finished Suiii/menu composition an extra visible beat after real
     // loading succeeds. Tracking this animation also pauses the hold in portrait
     // or hidden tabs; it never substitutes for asset readiness.
     await animate(gameLoader, [{ opacity: 1 }, { opacity: 1 }], { duration: 700 });
+    loadingMessages.stop();
     // Stop menu media before the next scene can start its own music.
     for (const source of menuAudioSources) { try { source.stop(); } catch { /* Ended. */ } }
     menuAudioSources.clear();

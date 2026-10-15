@@ -79,6 +79,11 @@ button { font: inherit; }
 .loader-star-one { left: -12px; top: 28px; font-size: 32px; }
 .loader-star-two { right: -10px; bottom: 22px; font-size: 25px; animation-delay: .6s; }
 .game-loader p { position: absolute; top: 205px; left: -70px; width: 340px; margin: 0; padding: 12px 15px; color: white; background: #0656a2d9; border: 2px solid #a8edff99; border-radius: 40px; font-size: 21px; font-weight: 900; box-shadow: 0 5px 15px #06377630; }
+.game-loader .loader-message { top: 222px; left: -80px; width: 360px; padding: 10px 0; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: 21px; font-weight: 700; color: #effcff; text-shadow: 0 2px 3px #063b78cc,0 0 12px #a7edff88; animation: loader-text-glow 1.8s ease-in-out infinite; }
+.loader-message[hidden] { display: none; }
+.game-loader .loader-message.is-changing { animation: loader-message-in .4s ease-out both,loader-text-glow 1.8s ease-in-out .4s infinite; }
+@keyframes loader-message-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes loader-text-glow { 0%,100% { color: #effcff; text-shadow: 0 2px 3px #063b78cc,0 0 10px #a7edff66; } 50% { color: #bcefff; text-shadow: 0 2px 3px #063b78cc,0 0 18px #bcefffbb; } }
 .loader-dots { display: inline-block; width: 24px; text-align: left; animation: loader-dots 1.2s ease-in-out infinite; }
 .menu.is-loading .sparky.is-suui { animation: suui-idle 3s ease-in-out infinite; }
 .menu.is-contact .sparky-hover { animation: character-hover 3.8s ease-in-out infinite; }
