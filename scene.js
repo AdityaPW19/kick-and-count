@@ -35,6 +35,8 @@
   let previousFocus;
   let ballEntrancePromise;
   let ballCount = 3;
+  let introPlaying = false;
+  let tutorialPending = false;
   const display = { count: 4, width: 420, variant: "count" };
 
   const paused = () => userPaused || document.hidden || !landscape.matches;
@@ -54,6 +56,7 @@
       if (stopped) animation.pause();
       else if (animation.playState === "paused") animation.play();
     }
+    window.SparkyIntro?.sync();
   }
 
   async function tween(element, frames, duration = 650, extra = {}) {
@@ -172,6 +175,7 @@
   }
 
   function spawnBalls(count = 3) {
+    if (introPlaying) return Promise.resolve(false);
     if (ballEntrancePromise) return ballEntrancePromise;
     ballCount = Math.max(3, Math.min(6, Math.round(Number(count) || 3)));
     document.getElementById("test-ball-count").value = ballCount;
@@ -255,6 +259,11 @@
     try {
       await preload();
       active = true;
+      const mode = new URLSearchParams(location.search).get("scene");
+      const preview = mode === "game";
+      const showIntro = !preview && (mode === "intro" || !window.SparkyIntro?.seen);
+      introPlaying = showIntro;
+      if (!preview) root.classList.add(showIntro ? "intro-running" : "tutorial-pending");
       setDisplay();
       camera.style.transform = transformFor(shots.wide);
       root.style.opacity = "0";
@@ -270,7 +279,16 @@
       menu.inert = true;
       status.textContent = "Scene preview ready. Open Scene lab to test camera shots and the display.";
       root.dispatchEvent(new CustomEvent("sparky:scene-ready", { bubbles: true }));
-      await spawnBalls(3);
+      if (preview) await spawnBalls(3);
+      else {
+        if (showIntro) await window.SparkyIntro.play();
+        introPlaying = false;
+        tutorialPending = true;
+        root.classList.remove("intro-running");
+        root.classList.add("tutorial-pending");
+        status.textContent = "Ready for the tutorial. Tutorial sequence will be added next.";
+        root.dispatchEvent(new CustomEvent("sparky:tutorial-ready", { bubbles: true }));
+      }
     } catch (error) {
       const message = document.createElement("button");
       message.className = "scene-error";
@@ -320,7 +338,7 @@
   // Public scene primitives for later cutscenes; no tutorial or game rules yet.
   window.SparkyScene = Object.freeze({
     enter, preload, setShot, setDisplay, setPaused, spawnBalls,
-    get state() { return { active, shot, paused: paused(), display: { ...display }, ballCount, ballsEntering: Boolean(ballEntrancePromise) }; }
+    get state() { return { active, shot, paused: paused(), display: { ...display }, ballCount, ballsEntering: Boolean(ballEntrancePromise), introPlaying, tutorialPending }; }
   });
-  if (new URLSearchParams(location.search).get("scene") === "game") enter();
+  if (["game", "intro"].includes(new URLSearchParams(location.search).get("scene"))) enter();
 })();

@@ -55,6 +55,7 @@ button { font: inherit; }
 .title-impact { left: 805px; top: 300px; z-index: 4; }
 .game-loader { position: absolute; left: 868px; top: 284px; width: 300px; height: 300px; z-index: 8; text-align: center; }
 .game-loader[hidden] { display: none; }
+.load-retry { position: absolute; top: 285px; left: -20px; padding: 12px 24px; border: 3px solid #fff1a2; border-radius: 24px; background: #ffdb61; color: #123b60; font: 700 20px "Fredoka", sans-serif; cursor: pointer; }
 .loader-orbit { position: relative; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #fff1a100 38%, #fff3b52e 58%, #8eeeff22 67%, #fff1a100 78%); }
 .loader-track { position: absolute; inset: 18px; border: 1px solid #ddfaff35; border-radius: 50%; box-shadow: 0 0 22px #97ecff33, inset 0 0 20px #ffdf6233; }
 .loader-ball-ring { position: absolute; inset: 0; animation: spin 5.5s linear infinite; }

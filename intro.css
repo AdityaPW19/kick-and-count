@@ -1,0 +1,67 @@
+@font-face { font-family: "Bangers"; font-style: normal; font-weight: 400; font-display: swap; src: url("assets/fonts/bangers.ttf") format("truetype"); }
+.intro-running .quantity-display, .intro-running .scene-sparky, .intro-running .ball-choice-zone, .intro-running .scene-lab, .intro-running .scene-preview-label { visibility: hidden; }
+.tutorial-pending .quantity-display, .tutorial-pending .ball-choice-zone, .tutorial-pending .scene-lab, .tutorial-pending .scene-preview-label { visibility: hidden; }
+.intro-running .scene-hud { z-index: 14; }
+.intro-running .scene-pause-overlay { z-index: 30; }
+.intro-cutscene { position: absolute; inset: 0; z-index: 10; overflow: hidden; isolation: isolate; }
+.intro-backdrop { position: absolute; inset: 0; opacity: 0; background: #ffc525 url("assets/comic-effect-bg/comic-bg-image.jpg") center / cover; }
+.intro-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.intro-backdrop::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 45%, #30245724); pointer-events: none; }
+.intro-stage { position: absolute; width: 1365px; height: 768px; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(var(--intro-scale, 1)); }
+.intro-composition { position: absolute; inset: 0; }
+.intro-actor { position: absolute; width: 500px; height: 500px; transform-origin: 50% 96%; opacity: 0; }
+.intro-sparky { left: 155px; top: 220px; z-index: 4; }
+.intro-messi { left: 670px; top: 150px; width: 600px; height: 600px; z-index: 3; }
+.intro-actor-art { position: relative; display: block; width: 100%; height: 100%; background: center / contain no-repeat; filter: drop-shadow(0 7px 1px #122a4830); transform-origin: 50% 90%; }
+.intro-actor.is-talking .intro-actor-art { animation: intro-talk-bob .62s ease-in-out infinite; }
+.intro-actor.is-listening .intro-actor-art { animation: intro-listen 2.8s ease-in-out infinite; }
+.intro-actor.is-sheet .intro-actor-art { background-size: 200% 100%; animation: intro-wave .7s steps(1, end) infinite; }
+.intro-actor.is-pushing .intro-actor-art { animation: intro-push .24s ease-in-out infinite alternate; }
+.intro-actor.is-angry .intro-actor-art { animation: intro-grumble .22s ease-in-out infinite alternate, intro-angry-frames .8s steps(1, end) infinite; }
+.intro-actor-shadow { position: absolute; bottom: 8px; left: 28%; width: 44%; height: 22px; border-radius: 50%; background: #17284955; filter: blur(6px); }
+.intro-actor.is-peeking .intro-actor-shadow { display: none; }
+.intro-comic-card { position: absolute; left: 600px; top: 100px; width: 650px; height: 445px; display: grid; place-items: center; z-index: 5; pointer-events: none; opacity: 0; transform-origin: center; }
+.intro-comic-card::before { content: ""; position: absolute; inset: -80px -20px; background: url("assets/splash/comic-boom.png") center / 100% 100% no-repeat; filter: drop-shadow(0 10px 0 #15284955); }
+.intro-comic-words { position: relative; width: 95%; text-align: center; font: 400 100px/.94 "Bangers", Impact, sans-serif; letter-spacing: 2px; color: #fff8a7; -webkit-text-stroke: 3px #121a3a; paint-order: stroke fill; text-shadow: 3px 5px 0 #121a3a; transform: rotate(-5deg); }
+.intro-comic-words small { display: block; font: inherit; font-size: 48px; line-height: 1.2; color: #fff; letter-spacing: 3px; }
+.intro-comic-words em { font-style: normal; color: #77f4ff; }
+.intro-comic-card.is-center { left: 382px; top: 20px; width: 660px; height: 400px; }
+.intro-comic-card.is-center .intro-comic-words { font-size: 104px; }
+.intro-comic-card.is-goat { left: 417.5px; top: 40px; width: 530px; height: 280px; }
+.intro-comic-card.is-goat::before { inset: -35px -15px; }
+.intro-comic-card.is-goat .intro-comic-words { font-size: 90px; color: #fff5a6; }
+.intro-comic-card.is-goat small { font-size: 30px; }
+.intro-sticker { position: absolute; z-index: 6; left: 910px; top: 90px; padding: 8px 24px; font: 400 74px/1 "Bangers", Impact, sans-serif; letter-spacing: 2px; color: #fff; -webkit-text-stroke: 2px #152747; paint-order: stroke fill; text-shadow: 3px 4px #152747; transform: rotate(8deg); opacity: 0; pointer-events: none; }
+.intro-sticker.is-sweat { color: #b5f8ff; }
+.intro-speed-overlay { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: repeating-conic-gradient(from 5deg at 70% 50%, #19324a00 0deg 10deg, #19324a44 10.4deg 11deg, #19324a00 11.3deg 24deg); mask-image: radial-gradient(ellipse, transparent 15%, #000 95%); }
+.intro-sparkles { position: absolute; inset: 0; pointer-events: none; }
+.intro-sparkles span { position: absolute; color: #fff2a6; font-size: var(--size); -webkit-text-stroke: 1px #1c3553; text-shadow: 0 0 14px #ffdc4c; animation: intro-star 1.6s ease-in-out infinite alternate; animation-delay: var(--delay); }
+.intro-ready { position: absolute; left: 867px; top: 480px; width: 182px; height: 182px; padding: 0; border: 0; border-radius: 50%; background: transparent; z-index: 9; cursor: pointer; touch-action: manipulation; opacity: 0; filter: drop-shadow(0 0 20px #fff49a); }
+.intro-ready::before { content: ""; position: absolute; inset: -12px; border: 3px dashed #fff9ab; border-radius: 50%; animation: spin 12s linear infinite; }
+.intro-ready img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.intro-ready span { position: relative; display: block; margin: 64px -7px 0; padding: 5px 15px 9px; border: 3px solid #162a4b; border-radius: 14px; background: #ffdc4e; color: #122b4b; font: 400 46px/.95 "Bangers", Impact, sans-serif; transform: rotate(-8deg); box-shadow: 0 5px 0 #162a4b; }
+.intro-ready:enabled:hover { filter: drop-shadow(0 0 30px #fff49a) brightness(1.07); }
+.intro-ready:enabled:active { scale: .95; }
+.intro-flying-ball { position: absolute; width: 170px; height: 170px; left: 873px; top: 485px; z-index: 10; opacity: 0; pointer-events: none; filter: drop-shadow(0 0 18px #fff0b1); }
+.intro-flying-ball img { width: 100%; height: 100%; }
+.intro-curtain { position: absolute; top: 0; bottom: 0; width: 53%; z-index: 12; pointer-events: none; background: repeating-linear-gradient(90deg, #533394 0, #7955bc 9%, #443082 18%); box-shadow: inset -8px 0 0 #ffe478; border-bottom: 10px solid #ffd562; }
+.intro-curtain-left { left: 0; transform: translateX(-110%); }
+.intro-curtain-right { right: 0; transform: translateX(110%); background-position: 70% 0; box-shadow: inset 8px 0 0 #ffe478; }
+.intro-controls { position: absolute; left: max(16px, env(safe-area-inset-left)); top: max(16px, env(safe-area-inset-top)); display: flex; gap: 8px; z-index: 20; }
+.intro-controls button { min-height: 40px; padding: 9px 15px; border: 1px solid #ffffff90; border-radius: 22px; background: #083c6be0; color: #fff; font: 500 12px "Fredoka", sans-serif; cursor: pointer; backdrop-filter: blur(8px); }
+.intro-cutscene button:focus-visible { outline: 4px solid #fff4a8; outline-offset: 4px; }
+.intro-cutscene.is-paused *, .intro-cutscene.is-paused *::before, .intro-cutscene.is-paused *::after { animation-play-state: paused !important; }
+.intro-gate { position: absolute; inset: 0; z-index: 22; display: grid; place-content: center; gap: 14px; padding: 24px; background: #073864dc; backdrop-filter: blur(10px); text-align: center; color: #fff; }
+.intro-gate h2 { margin: 0; font-size: clamp(24px, 4vw, 38px); color: #fff1a2; }
+.intro-gate p { max-width: 390px; margin: 0 auto 8px; color: #d6f2ff; font-size: 15px; }
+.intro-gate button { border: 2px solid #fff2ac; border-radius: 18px; background: #ffdb61; color: #123b60; padding: 13px 25px; font: 600 18px "Fredoka", sans-serif; cursor: pointer; }
+.intro-gate .intro-silent { background: transparent; border-color: #a9d9ff66; color: white; font-size: 13px; }
+.intro-running .scene-pause-button { z-index: 25; }
+@keyframes intro-talk-bob { 0%, 100% { transform: translateY(0) rotate(-.4deg); } 50% { transform: translateY(-5px) rotate(.4deg); } }
+@keyframes intro-listen { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes intro-wave { 0%, 100% { background-position: left center; } 50% { background-position: right center; } }
+@keyframes intro-angry-frames { 0%, 100% { background-image: var(--angry-front); } 50% { background-image: var(--angry-left); } }
+@keyframes intro-push { from { transform: translateX(-3px) rotate(-1deg); } to { transform: translateX(4px) rotate(1deg); } }
+@keyframes intro-grumble { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
+@keyframes intro-star { from { transform: scale(.6) rotate(-10deg); opacity: .45; } to { transform: scale(1) rotate(10deg); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .intro-cutscene *, .intro-cutscene *::before { animation: none !important; transition: none !important; } }

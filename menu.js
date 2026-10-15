@@ -22,6 +22,55 @@
   let started = false;
   let ready = false;
   let launching = false;
+  let nextAssetsPromise;
+  let menuAudioContext, menuMusic, crowdBuffer;
+  const menuAudioSources = new Set();
+
+  async function prepareMenuAudio() {
+    if (["game", "intro"].includes(new URLSearchParams(location.search).get("scene"))) return;
+    const Constructor = window.AudioContext || window.webkitAudioContext;
+    if (!Constructor) return;
+    menuAudioContext = new Constructor();
+    const load = async path => {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`Unable to load ${path}`);
+      return menuAudioContext.decodeAudioData(await response.arrayBuffer());
+    };
+    const [music, crowd] = await Promise.all([
+      load("assets/audio/music/main-menu.mp3"), load("assets/audio/sfx/crowd-cheering.mp3")
+    ]);
+    crowdBuffer = crowd;
+    menuMusic = menuAudioContext.createBufferSource();
+    menuMusic.buffer = music; menuMusic.loop = true;
+    const gain = menuAudioContext.createGain(); gain.gain.value = .18;
+    menuMusic.connect(gain); gain.connect(menuAudioContext.destination);
+    menuAudioSources.add(menuMusic); menuMusic.start();
+    syncMenuAudio();
+  }
+
+  function syncMenuAudio() {
+    if (!menuAudioContext) return;
+    if (shouldPause() || menu.hidden) menuAudioContext.suspend().catch(() => {});
+    else menuAudioContext.resume().catch(() => {});
+  }
+
+  function cheer() {
+    if (!crowdBuffer) return;
+    const source = menuAudioContext.createBufferSource(); source.buffer = crowdBuffer;
+    const gain = menuAudioContext.createGain(); gain.gain.value = .48;
+    source.connect(gain); gain.connect(menuAudioContext.destination);
+    menuAudioSources.add(source);
+    source.onended = () => { menuAudioSources.delete(source); source.disconnect(); gain.disconnect(); };
+    source.start();
+  }
+
+  function prepareNextScene() {
+    if (!nextAssetsPromise) nextAssetsPromise = Promise.all([
+      window.SparkyScene.preload(),
+      window.SparkyIntro.seen ? Promise.resolve() : window.SparkyIntro.preload()
+    ]).catch(error => { nextAssetsPromise = undefined; throw error; });
+    return nextAssetsPromise;
+  }
 
   const shouldPause = () => !landscape.matches || document.hidden;
 
@@ -195,6 +244,7 @@
     stage.style.setProperty("--sparky-offset", `${-720 - extraWidth}px`);
     stage.style.setProperty("--football-offset", `${1050 + extraWidth}px`);
     const paused = shouldPause();
+    syncMenuAudio();
     menu.classList.toggle("is-paused", paused);
     menu.inert = !landscape.matches;
     for (const animation of activeAnimations) {
@@ -209,14 +259,15 @@
       "assets/bg/main-menu-bg.png", "assets/animations/sparky-sprites/action-emotes/sparky-smirk-kicking.png",
       "assets/objects/football.png", "assets/graphics/power-football.png",
       "assets/graphics/title-art.png", "assets/ui/play-button.png",
-      "assets/graphics/sparky-suui.png"
+      "assets/graphics/sparky-suui.png", "assets/graphics/camera-flash.svg",
+      "assets/objects/cartoon-football.svg"
     ];
     try {
-      await Promise.all(sources.map(async (source) => {
+      await Promise.all([prepareMenuAudio(), document.fonts.ready, ...sources.map(async (source) => {
         const image = new Image();
         image.src = source;
         await image.decode();
-      }));
+      })]);
       assetsReady = true;
       syncViewport();
     } catch (error) {
@@ -234,6 +285,7 @@
       { transform: "translateY(-75px) rotate(-8deg) scale(.97, 1.04)" }
     ], { duration: 370, easing: "ease-out" });
     sparky.classList.add("is-suui-open");
+    cheer();
     await animate(sparky, [
       { transform: "translateY(-75px) rotate(-8deg) scale(.97, 1.04)" },
       { transform: "translateY(0) rotate(0) scale(1.07, .9)", offset: .7 },
@@ -310,6 +362,8 @@
     menu.setAttribute("aria-busy", "true");
     menu.dispatchEvent(new CustomEvent("sparky:play", { bubbles: true }));
     status.textContent = "Loading";
+    // Start real loading alongside the exit choreography; retain failures until awaited.
+    const nextAssets = prepareNextScene().then(() => ({ ok: true }), error => ({ error }));
 
     if (reducedMotion.matches) {
       titleEnter.hidden = true;
@@ -317,6 +371,7 @@
       playEnter.hidden = true;
       sparky.classList.remove("is-kicking");
       sparky.classList.add("is-suui", "is-suui-open");
+      cheer();
       gameLoader.hidden = false;
     } else {
       await Promise.all([
@@ -324,7 +379,32 @@
       ]);
     }
     menu.classList.add("is-loading");
-    // Hold the loader for the next game phase rather than simulating loading progress.
+    let result = await nextAssets;
+    while (result.error) {
+      console.error("Next scene assets unavailable:", result.error);
+      status.textContent = "Some assets could not load. Check your connection and retry.";
+      gameLoader.setAttribute("aria-label", status.textContent);
+      const message = document.createElement("p");
+      message.textContent = "Couldn’t load. Try again?";
+      gameLoader.append(message);
+      const retry = document.createElement("button");
+      retry.type = "button"; retry.className = "load-retry"; retry.textContent = "Retry loading";
+      gameLoader.append(retry);
+      await new Promise(resolve => retry.addEventListener("click", resolve, { once: true }));
+      retry.remove();
+      message.remove();
+      gameLoader.setAttribute("aria-label", "Loading");
+      status.textContent = "Retrying asset loading";
+      result = await prepareNextScene().then(() => ({ ok: true }), error => ({ error }));
+    }
+    // Give the finished Suiii/menu composition an extra visible beat after real
+    // loading succeeds. Tracking this animation also pauses the hold in portrait
+    // or hidden tabs; it never substitutes for asset readiness.
+    await animate(gameLoader, [{ opacity: 1 }, { opacity: 1 }], { duration: 700 });
+    // Stop menu media before the next scene can start its own music.
+    for (const source of menuAudioSources) { try { source.stop(); } catch { /* Ended. */ } }
+    menuAudioSources.clear();
+    menuAudioContext?.suspend().catch(() => {});
     menu.dispatchEvent(new CustomEvent("sparky:transition-complete", { bubbles: true }));
   }
 
@@ -332,6 +412,8 @@
     if (!ready || launching || shouldPause()) return;
     startPlayTransition();
   });
+  document.addEventListener("pointerdown", syncMenuAudio);
+  document.addEventListener("keydown", syncMenuAudio);
 
   window.addEventListener("resize", syncViewport);
   landscape.addEventListener("change", syncViewport);

@@ -1,12 +1,15 @@
 # Field scene systems preview
 
-This phase is a staging/camera/UI test, not a tutorial or playable counting round.
-Music, dialogue, sprite direction and story timing are intentionally deferred.
+The field primitives remain a staging/camera/UI test, not a playable counting round.
+An isolated, audio-led welcome film now precedes tutorial staging on first visits.
+The actual tutorial is still pending; the intro never starts ball-test gameplay.
 
 ## Preview
 
-- Play from the existing menu to enter the field after its exit transition.
+- Play from the existing menu to enter the first-visit introduction after its exit transition.
 - `?scene=game` opens the field directly for development.
+- `?scene=intro` forces the welcome film without changing first-visit storage.
+- `?scene=intro&introSpeed=8` is an accelerated development check, not player-facing timing.
 - Open **Scene lab** at bottom-right to try three camera shots, quantities 1–20,
   display widths 300–620, three display designs and scene-area guides.
 - The pause CTA and Escape pause/resume. The modal traps keyboard focus.
@@ -51,17 +54,65 @@ without leaving the wide-shot screen. Message/celebration content is test copy o
 - `SparkyScene.setPaused(boolean)` controls explicit player pause.
 - `SparkyScene.state` returns a snapshot of active shot, pause and display state.
 - Menu `sparky:play` begins asset decoding in parallel with the menu exit.
-- Menu `sparky:transition-complete` enters the prepared field with a crossfade.
+- Menu `sparky:transition-complete` fires only after both exit choreography and
+    required next-scene assets finish loading, then enters with a crossfade.
+- The football loader remains visible while loading. A failed request keeps the
+    menu in place with **Retry loading**; the game does not proceed with missing assets.
 - `sparky:scene-ready` signals completed field entrance.
 - `sparky:shot-change` includes `detail.shot` after a completed camera move.
 - `sparky:display-change` includes count, width, height and variant.
 
-The scene adds no audio playback or voice cues yet. Supplied PNG assets are used
-for the goal, pause CTA and placeholder coach; the display is generated vector art.
+Supplied PNG assets are used for the goal, pause CTA and placeholder coach; the
+display is generated vector art. Audio and comic choreography belong to the
+separate intro layer, not the camera, quantity board or ball entrance primitives.
+
+## First-visit welcome film
+
+`intro.js` owns the cutscene DOM, decoded Web Audio sources, voice-ended dialogue,
+sprite poses, two-frame Sparky greeting and Messi wave/noticing sheets, alternating
+Messi angry poses, comic video backgrounds and interactive Ready
+football. `intro.css` uses Bangers for comic emphasis; normal UI remains Fredoka.
+All assets and fonts are local. Before a first-visit handoff, all intro poses,
+audio buffers, splash/fallback artwork and Bangers are loaded; all six comic
+videos are fully fetched into retained blob URLs and their first frames validated.
+Later video scene changes use those downloaded URLs, not fresh network requests.
+Returning viewers load only the assets needed for tutorial staging.
+Missing audio in browsers without Web Audio uses pause-aware timed captions;
+blocked autoplay displays an explicit sound-start/silent-watch gate.
+
+## Menu audio
+
+The menu preloads/decodes `main-menu.mp3` and `crowd-cheering.mp3` alongside its
+artwork. Music loops at a quiet level, and crowd cheering starts at the open-arm
+Suiii pose (also in reduced motion). Both pause when hidden or in portrait and
+stop before the intro begins. Autoplay policy may require the first pointer or
+keyboard interaction; activation retries audio without blocking the animation.
+Direct development scene URLs do not start menu music.
+
+- `SparkyIntro.preload()`, `.unlock()`, `.play()`, `.sync()` expose the intro lifecycle.
+- `SparkyIntro.seen` reads completion; `.state` includes beat history and asset failures.
+- The local key `sparky.intro.completed.v1` is written only after the full film and
+    Ready interaction finish. Skip does not count as viewing. Restricted storage
+    falls back to completion for the current page session.
+- `sparky:intro-beat` provides `detail.beat`; `sparky:intro-complete` provides
+    `detail.completed` and `detail.skipped`.
+- User pause, hidden tabs and portrait suspend audio, video, CSS and tracked
+    animations together. Skip stops active sources, including the Messi loop.
+- The Messi reaction loop is stopped after his exit, not before it.
+- Messi keeps waving through the boast, then uses the noticing sheet through the
+    following line. Sparky's push dialogue accompanies the exit; the Chotu aside
+    precedes the cough. Only `?!` appears over Messi, not an OOPS caption.
+- Soccer and Sparky have separate animated splashes, switching one second into
+    their shared recording. GOAT is a smaller, top-centered splash between actors.
+- `sparky:tutorial-ready` fires after completion/skip, or immediately after field
+    entry for returning viewers. `SparkyScene.state.tutorialPending` becomes true.
+    No tutorial is fabricated and no test balls are spawned on this route.
+- A future tutorial replay CTA can use the intro API; no player-facing replay
+    control is added yet.
 
 ## Football entrance preview
 
-After the field entrance, three plain footballs roll in from offscreen right.
+In the direct `?scene=game` preview, three plain footballs roll in from offscreen right.
 Each has separate travel, rolling rotation, squash-and-stretch bounces and ground
 shadow tracks. Delayed balls remain offscreen until their turn. Pause and portrait
 freeze every track; reduced motion places the balls immediately.
