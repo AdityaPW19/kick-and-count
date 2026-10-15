@@ -8,6 +8,19 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; overscroll-
 body { -webkit-tap-highlight-color: transparent; user-select: none; }
 button { font: inherit; }
 .menu { position: fixed; inset: 0; overflow: hidden; isolation: isolate; }
+.menu-fullscreen { position: absolute; top: max(18px,env(safe-area-inset-top)); left: max(18px,env(safe-area-inset-left)); z-index: 10; width: clamp(52px,9vh,76px); aspect-ratio: 1; padding: 13px; border: 3.5px solid #fff0a1; border-radius: 50%; background: radial-gradient(ellipse at 28% 12%,#c6ffff 0%,#00d9ef 25%,#008eff 52%,#004de7 78%,#0232aa 100%); box-shadow: 0 0 0 1.5px #f6b829,0 4px 0 #03409b,0 8px 13px #063c7966,inset 0 0 0 2.5px #0753ce,inset 0 4px 0 3.5px #8ffaff88,inset 0 -4px 0 3.5px #012cb755; cursor: pointer; touch-action: manipulation; animation: fullscreen-enter .7s cubic-bezier(.2,1.5,.4,1) both; transition: scale .18s,filter .18s,opacity .25s; }
+.menu-fullscreen[hidden] { display: none; }
+.menu-fullscreen::before { content: ""; position: absolute; left: 19%; top: 13%; width: 28%; height: 11%; border-radius: 50%; background: #fff9; transform: rotate(-32deg); pointer-events: none; }
+.menu-fullscreen svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 0 #0044bb); animation: fullscreen-breathe 3s ease-in-out 1s infinite; }
+.menu-fullscreen .fullscreen-contract { display: none; }
+.menu-fullscreen[aria-pressed="true"] .fullscreen-expand { display: none; }
+.menu-fullscreen[aria-pressed="true"] .fullscreen-contract { display: block; }
+.menu-fullscreen:hover { scale: 1.07; filter: brightness(1.12); }
+.menu-fullscreen:active { scale: .94; }
+.menu-fullscreen:focus-visible { outline: 4px solid white; outline-offset: 6px; }
+.menu.is-launching .menu-fullscreen { opacity: 0; pointer-events: none; }
+@keyframes fullscreen-enter { from { opacity: 0; transform: translateY(-90px) rotate(-35deg) scale(.4); } to { opacity: 1; transform: translateY(0) rotate(0) scale(1); } }
+@keyframes fullscreen-breathe { 0%,70%,100% { transform: scale(1); } 85% { transform: scale(1.1); } }
 .stadium { position: absolute; inset: 0; background: url("assets/bg/main-menu-bg.png") center / cover no-repeat; transform: scale(1.3); will-change: transform; }
 .crowd-flashes { position: absolute; left: 50%; top: 50%; width: max(100vw, 177.6833vh); aspect-ratio: 1672 / 941; transform: translate(-50%, -50%); z-index: 1; pointer-events: none; }
 .crowd-flash { --flash-tint: #bceeff; position: absolute; width: var(--flash-size, 22px); aspect-ratio: 1; transform: translate(-50%, -50%); opacity: 0; background: url("assets/graphics/camera-flash.svg") center / contain no-repeat; filter: drop-shadow(0 0 3px var(--flash-tint)); }

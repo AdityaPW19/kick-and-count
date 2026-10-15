@@ -15,6 +15,26 @@
   const status = document.getElementById("menu-status");
   const loading = document.getElementById("loading");
   const gameLoader = document.getElementById("game-loader");
+  const fullscreenButton = document.getElementById("menu-fullscreen");
+  if (document.fullscreenEnabled && document.documentElement.requestFullscreen) {
+    fullscreenButton.hidden = false;
+    const syncFullscreen = () => {
+      const enabled = Boolean(document.fullscreenElement);
+      const label = enabled ? "Exit fullscreen" : "Enter fullscreen";
+      fullscreenButton.setAttribute("aria-pressed", String(enabled));
+      fullscreenButton.setAttribute("aria-label", label); fullscreenButton.title = label;
+    };
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    fullscreenButton.addEventListener("click", async () => {
+      if (menu.hidden || menu.classList.contains("is-launching")) return;
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      } catch { status.textContent = "Fullscreen isn’t available in this browser right now."; }
+      syncFullscreen();
+    });
+    syncFullscreen();
+  }
   const landscape = matchMedia("(orientation: landscape)");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const activeAnimations = new Set();
@@ -23,11 +43,11 @@
   let ready = false;
   let launching = false;
   let nextAssetsPromise;
-  let menuAudioContext, menuMusic, crowdBuffer;
+  let menuAudioContext, menuMusic, crowdBuffer, magicBuffer, goalHitBuffer;
   const menuAudioSources = new Set();
 
   async function prepareMenuAudio() {
-    if (["game", "intro"].includes(new URLSearchParams(location.search).get("scene"))) return;
+    if (["game", "intro", "tutorial"].includes(new URLSearchParams(location.search).get("scene"))) return;
     const Constructor = window.AudioContext || window.webkitAudioContext;
     if (!Constructor) return;
     menuAudioContext = new Constructor();
@@ -36,10 +56,11 @@
       if (!response.ok) throw new Error(`Unable to load ${path}`);
       return menuAudioContext.decodeAudioData(await response.arrayBuffer());
     };
-    const [music, crowd] = await Promise.all([
-      load("assets/audio/music/main-menu.mp3"), load("assets/audio/sfx/crowd-cheering.mp3")
+    const [music, crowd, magic, goalHit] = await Promise.all([
+      load("assets/audio/music/main-menu.mp3"), load("assets/audio/sfx/crowd-cheering.mp3"),
+      load("assets/audio/sfx/magic-spell.mp3"), load("assets/audio/goalhit/goal-hit.mp3")
     ]);
-    crowdBuffer = crowd;
+    crowdBuffer = crowd; magicBuffer = magic; goalHitBuffer = goalHit;
     menuMusic = menuAudioContext.createBufferSource();
     menuMusic.buffer = music; menuMusic.loop = true;
     const gain = menuAudioContext.createGain(); gain.gain.value = .18;
@@ -54,20 +75,23 @@
     else menuAudioContext.resume().catch(() => {});
   }
 
-  function cheer() {
-    if (!crowdBuffer) return;
-    const source = menuAudioContext.createBufferSource(); source.buffer = crowdBuffer;
-    const gain = menuAudioContext.createGain(); gain.gain.value = .48;
+  function menuEffect(buffer, volume) {
+    if (!buffer || !menuAudioContext) return;
+    const source = menuAudioContext.createBufferSource(); source.buffer = buffer;
+    const gain = menuAudioContext.createGain(); gain.gain.value = volume;
     source.connect(gain); gain.connect(menuAudioContext.destination);
     menuAudioSources.add(source);
     source.onended = () => { menuAudioSources.delete(source); source.disconnect(); gain.disconnect(); };
     source.start();
   }
 
+  function cheer() { menuEffect(crowdBuffer, .48); }
+
   function prepareNextScene() {
     if (!nextAssetsPromise) nextAssetsPromise = Promise.all([
       window.SparkyScene.preload(),
-      window.SparkyIntro.seen ? Promise.resolve() : window.SparkyIntro.preload()
+      window.SparkyTutorial.preload(),
+      window.SparkyIntro.preload()
     ]).catch(error => { nextAssetsPromise = undefined; throw error; });
     return nextAssetsPromise;
   }
@@ -130,6 +154,7 @@
   }
 
   function burstKickParticles(impact = document.getElementById("impact")) {
+    if (impact.id === "impact") menuEffect(magicBuffer, .65);
     impact.replaceChildren();
     impact.style.opacity = "1";
     const effects = [];
@@ -328,6 +353,7 @@
       { transform: "translate(230px, -180px) rotate(-18deg)" }
     ], { duration: 430, easing: "cubic-bezier(.45, 0, .75, .6)" });
     menu.classList.add("is-title-hit");
+    menuEffect(goalHitBuffer, .65);
     const titleImpact = document.createElement("div");
     titleImpact.className = "impact title-impact";
     titleImpact.setAttribute("aria-hidden", "true");
@@ -358,6 +384,7 @@
     launching = true;
     ready = false;
     playButton.disabled = true;
+    fullscreenButton.disabled = true; fullscreenButton.tabIndex = -1;
     menu.classList.add("is-launching");
     menu.setAttribute("aria-busy", "true");
     menu.dispatchEvent(new CustomEvent("sparky:play", { bubbles: true }));

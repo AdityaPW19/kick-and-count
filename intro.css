@@ -2,6 +2,8 @@
 .intro-running .quantity-display, .intro-running .scene-sparky, .intro-running .ball-choice-zone, .intro-running .scene-lab, .intro-running .scene-preview-label { visibility: hidden; }
 .tutorial-pending .quantity-display, .tutorial-pending .ball-choice-zone, .tutorial-pending .scene-lab, .tutorial-pending .scene-preview-label { visibility: hidden; }
 .intro-running .scene-hud { z-index: 14; }
+.intro-field-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+.intro-field-video.is-playing { opacity: 1; }
 .intro-running .scene-pause-overlay { z-index: 30; }
 .intro-cutscene { position: absolute; inset: 0; z-index: 10; overflow: hidden; isolation: isolate; }
 .intro-backdrop { position: absolute; inset: 0; opacity: 0; background: #ffc525 url("assets/comic-effect-bg/comic-bg-image.jpg") center / cover; }
@@ -12,12 +14,18 @@
 .intro-actor { position: absolute; width: 500px; height: 500px; transform-origin: 50% 96%; opacity: 0; }
 .intro-sparky { left: 155px; top: 220px; z-index: 4; }
 .intro-messi { left: 670px; top: 150px; width: 600px; height: 600px; z-index: 3; }
-.intro-actor-art { position: relative; display: block; width: 100%; height: 100%; background: center / contain no-repeat; filter: drop-shadow(0 7px 1px #122a4830); transform-origin: 50% 90%; }
+.intro-actor-art { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; filter: drop-shadow(0 7px 1px #122a4830); transform-origin: 50% 90%; }
+.intro-pose { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; }
+.intro-pose.is-current { opacity: 1; }
+.intro-pose.is-pose-sheet { width: 200%; max-width: none; object-fit: fill; }
+.intro-pose.is-pose-sheet.is-current { animation: intro-sheet-frames .7s steps(1, end) infinite; }
+.intro-actor.is-angry .intro-pose[data-pose="angry"] { animation: intro-angry-front .8s steps(1, end) infinite; }
+.intro-actor.is-angry .intro-pose[data-pose="angryLeft"] { animation: intro-angry-left .8s steps(1, end) infinite; }
 .intro-actor.is-talking .intro-actor-art { animation: intro-talk-bob .62s ease-in-out infinite; }
 .intro-actor.is-listening .intro-actor-art { animation: intro-listen 2.8s ease-in-out infinite; }
-.intro-actor.is-sheet .intro-actor-art { background-size: 200% 100%; animation: intro-wave .7s steps(1, end) infinite; }
+.intro-actor.is-sheet .intro-actor-art { animation: none; }
 .intro-actor.is-pushing .intro-actor-art { animation: intro-push .24s ease-in-out infinite alternate; }
-.intro-actor.is-angry .intro-actor-art { animation: intro-grumble .22s ease-in-out infinite alternate, intro-angry-frames .8s steps(1, end) infinite; }
+.intro-actor.is-angry .intro-actor-art { animation: intro-grumble .22s ease-in-out infinite alternate; }
 .intro-actor-shadow { position: absolute; bottom: 8px; left: 28%; width: 44%; height: 22px; border-radius: 50%; background: #17284955; filter: blur(6px); }
 .intro-actor.is-peeking .intro-actor-shadow { display: none; }
 .intro-comic-card { position: absolute; left: 600px; top: 100px; width: 650px; height: 445px; display: grid; place-items: center; z-index: 5; pointer-events: none; opacity: 0; transform-origin: center; }
@@ -49,6 +57,12 @@
 .intro-curtain-right { right: 0; transform: translateX(110%); background-position: 70% 0; box-shadow: inset 8px 0 0 #ffe478; }
 .intro-controls { position: absolute; left: max(16px, env(safe-area-inset-left)); top: max(16px, env(safe-area-inset-top)); display: flex; gap: 8px; z-index: 20; }
 .intro-controls button { min-height: 40px; padding: 9px 15px; border: 1px solid #ffffff90; border-radius: 22px; background: #083c6be0; color: #fff; font: 500 12px "Fredoka", sans-serif; cursor: pointer; backdrop-filter: blur(8px); }
+.intro-controls .intro-skip { padding: 12px 20px; border: 1px solid #fff7; border-radius: 17px; background: #063862dc; box-shadow: 0 5px 0 #0327463b; text-align: left; transition: transform .18s,background .18s; }
+.intro-skip span { display: block; font-size: 10px; letter-spacing: 2px; color: #ffe388; }
+.intro-skip b { display: block; margin-top: 5px; font-size: 15px; }
+.intro-skip i { margin-left: 16px; font-style: normal; color: #ffe388; }
+.intro-controls .intro-skip:hover { background: #0c507de8; transform: translateY(-2px); }
+.intro-controls .intro-skip:active { transform: translateY(2px); }
 .intro-cutscene button:focus-visible { outline: 4px solid #fff4a8; outline-offset: 4px; }
 .intro-cutscene.is-paused *, .intro-cutscene.is-paused *::before, .intro-cutscene.is-paused *::after { animation-play-state: paused !important; }
 .intro-gate { position: absolute; inset: 0; z-index: 22; display: grid; place-content: center; gap: 14px; padding: 24px; background: #073864dc; backdrop-filter: blur(10px); text-align: center; color: #fff; }
@@ -59,8 +73,9 @@
 .intro-running .scene-pause-button { z-index: 25; }
 @keyframes intro-talk-bob { 0%, 100% { transform: translateY(0) rotate(-.4deg); } 50% { transform: translateY(-5px) rotate(.4deg); } }
 @keyframes intro-listen { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-@keyframes intro-wave { 0%, 100% { background-position: left center; } 50% { background-position: right center; } }
-@keyframes intro-angry-frames { 0%, 100% { background-image: var(--angry-front); } 50% { background-image: var(--angry-left); } }
+@keyframes intro-sheet-frames { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-50%); } }
+@keyframes intro-angry-front { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes intro-angry-left { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
 @keyframes intro-push { from { transform: translateX(-3px) rotate(-1deg); } to { transform: translateX(4px) rotate(1deg); } }
 @keyframes intro-grumble { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
 @keyframes intro-star { from { transform: scale(.6) rotate(-10deg); opacity: .45; } to { transform: scale(1) rotate(10deg); opacity: 1; } }

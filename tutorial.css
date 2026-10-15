@@ -1,0 +1,69 @@
+.tutorial-running .scene-sparky, .tutorial-running .scene-lab, .tutorial-running .scene-preview-label { visibility: hidden; }
+.tutorial-running .quantity-display, .tutorial-running .ball-choice-zone { visibility: hidden; }
+.tutorial-running.tutorial-board-visible .quantity-display, .tutorial-running.tutorial-balls-visible .ball-choice-zone { visibility: visible; }
+.tutorial-running .panel-ball { opacity: 0; animation: none; }
+.tutorial-coach { position: absolute; left: 50px; top: 305px; width: 420px; height: 420px; transform-origin: 50% 90%; z-index: 4; }
+.tutorial-coach-art { position: absolute; inset: 0; overflow: hidden; filter: drop-shadow(0 7px 3px #163b4730); }
+.tutorial-pose { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; }
+.tutorial-pose.is-current { opacity: 1; }
+.tutorial-pose.is-sheet { width: 200%; max-width: none; object-fit: fill; }
+.tutorial-pose.is-sheet.is-current { animation: tutorial-sheet .8s steps(1,end) infinite; }
+.tutorial-coach.is-speaking .tutorial-coach-art { animation: intro-talk-bob .65s ease-in-out infinite; }
+.tutorial-coach.is-kicking .tutorial-pose.is-current { animation: none; transform: translateX(0); }
+.tutorial-coach.kick-contact .tutorial-pose.is-current { transform: translateX(-50%); }
+.tutorial-ui { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.tutorial-stage { position: absolute; width: 1365px; height: 768px; left: 50%; top: 50%; transform: translate(-50%,-50%) scale(var(--tutorial-scale,1)); }
+.tutorial-cinema { position: absolute; inset: 0; z-index: 1; opacity: 0; background: #0f987a; pointer-events: none; }
+.tutorial-cinema video { width: 100%; height: 100%; object-fit: cover; }
+.tutorial-running .scene-frame { z-index: 2; }
+.tutorial-cinematic .scene-frame { pointer-events: none; }
+.tutorial-cinematic .field-world { opacity: 0; }
+.tutorial-cinematic .quantity-display { visibility: hidden; }
+.tutorial-finale .goal-zone, .tutorial-finale .ball-choice-zone, .tutorial-finale .quantity-display { visibility: hidden !important; }
+.tutorial-running .scene-hud { z-index: 15; }
+.tutorial-running .scene-pause-overlay { z-index: 30; }
+.tutorial-progress { position: absolute; left: max(18px,env(safe-area-inset-left)); top: 18px; padding: 12px 20px; color: #fff; border: 1px solid #fff7; border-radius: 17px; background: #063862dc; box-shadow: 0 5px 0 #0327463b; }
+.tutorial-progress span { display: block; font-size: 10px; letter-spacing: 2px; color: #ffe388; }
+.tutorial-progress b { display: block; margin-top: 5px; font-size: 15px; }
+.tutorial-caption { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); max-width: 80%; border: 1px solid #fff8; border-radius: 20px; padding: 6px 20px; color: #fff; background: #063862e8; text-align: center; font-size: clamp(11px,1.3vw,16px); box-shadow: 0 4px 0 #03274640; }
+.tutorial-mute { pointer-events: auto; position: absolute; left: 20px; top: 94px; padding: 7px 12px; border: 1px solid #fff6; border-radius: 20px; color: #fff; background: #063862dc; font: 500 11px Fredoka,sans-serif; cursor: pointer; }
+.tutorial-comic { position: absolute; left: 620px; top: 125px; width: 600px; height: 390px; display: grid; place-items: center; opacity: 0; }
+.tutorial-comic::before { content: ""; position: absolute; inset: -65px -25px; background: url("assets/splash/comic-boom.png") center/100% 100% no-repeat; }
+.tutorial-comic > div { position: relative; text-align: center; font: 400 98px/.95 Bangers,Impact,sans-serif; color: #fff2ab; -webkit-text-stroke: 3px #132343; paint-order: stroke fill; text-shadow: 4px 6px #132343; }
+.tutorial-comic small { display: block; margin-top: 12px; font-size: 33px; color: white; }
+.tutorial-comic em { font-style: normal; color: #80f3ff; }
+.tutorial-ball-number { position: absolute; inset: 8px; display: grid; place-items: center; isolation: isolate; pointer-events: none; color: var(--number-color,#1554ed); font: 700 62px/1 Fredoka,sans-serif; -webkit-text-stroke: 8px #fff; paint-order: stroke fill; filter: drop-shadow(0 3px 1px #15335365) drop-shadow(0 5px 5px #102c4b55); }
+.tutorial-ball-number::before { content: ""; position: absolute; inset: 9px; z-index: -1; background: radial-gradient(ellipse,#fffffff5 0%,#ffffffeb 32%,#ffffff99 52%,#ffffff00 74%); filter: blur(4px); }
+.tutorial-choosing .choice-ball { pointer-events: auto; cursor: pointer; border-radius: 50%; }
+.tutorial-choosing .choice-ball:focus-visible { outline: 5px solid #fff3a6; outline-offset: 9px; }
+.tutorial-choosing .choice-ball[data-number="2"]::before { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 20px 8px #fff59b99, 0 0 42px 16px #fff05c66; }
+.tutorial-choosing .choice-ball[data-number="2"]::after { content: ""; position: absolute; width: 78px; height: 78px; left: 15px; top: -100px; background: url("assets/ui/finger-pointer.png") center / contain no-repeat; transform: scaleY(-1); filter: drop-shadow(0 4px 3px #123f6740); pointer-events: none; animation: tutorial-pointer .7s ease-in-out infinite alternate; }
+.choice-ball.is-selected { filter: drop-shadow(0 0 16px #fff36b); }
+.choice-ball.is-counting { filter: drop-shadow(0 0 22px #fff36b); }
+.panel-ball.is-counting { transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 5px #fff36b) drop-shadow(0 0 9px #fff36b); }
+.tutorial-messi { position: absolute; left: calc(1080px + var(--tutorial-gutter,0px)); top: 110px; width: 560px; height: 560px; opacity: 0; transform-origin: 70% 85%; }
+.tutorial-messi-pose { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; }
+.tutorial-messi-pose.is-current { opacity: 1; }
+.tutorial-lets-go { position: absolute; left: 820px; top: 500px; width: 165px; height: 165px; padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: auto; cursor: pointer; filter: drop-shadow(0 0 22px #fff39d); }
+.tutorial-lets-go::before { content: ""; position: absolute; inset: -14px; border: 4px dashed #fff3a2; border-radius: 50%; animation: spin 12s linear infinite; }
+.tutorial-lets-go img, .tutorial-finale-ball img { width: 100%; height: 100%; }
+.tutorial-lets-go span { position: absolute; left: -12px; right: -12px; top: 56px; border: 3px solid #153353; border-radius: 15px; padding: 6px; color: #153353; background: #ffde62; font: 44px/1 Bangers,Impact,sans-serif; box-shadow: 0 5px 0 #153353; transform: rotate(-8deg); }
+.tutorial-lets-go:focus-visible { outline: 5px solid #fff6b8; outline-offset: 18px; }
+.tutorial-lets-go:hover { filter: drop-shadow(0 0 32px #fff39d) brightness(1.08); }
+.tutorial-finale-ball { position: absolute; left: 820px; top: 500px; width: 165px; height: 165px; z-index: 12; pointer-events: none; }
+.tutorial-impact { position: absolute; left: 1140px; top: 200px; opacity: 0; color: #ffec71; font: 90px/1 Bangers,Impact,sans-serif; -webkit-text-stroke: 3px #153353; paint-order: stroke fill; text-shadow: 5px 5px #ff5181; }
+.tutorial-game-wipe { position: absolute; inset: -5%; z-index: 20; display: grid; place-items: center; background: repeating-conic-gradient(from 10deg at center,#087d99 0deg 15deg,#096485 15deg 30deg); box-shadow: 20px 0 0 #ffe26b; pointer-events: auto; }
+.tutorial-game-wipe span { font: 100px/1 Bangers,Impact,sans-serif; color: #fff4ac; -webkit-text-stroke: 3px #143451; paint-order: stroke fill; text-shadow: 5px 7px #143451; transform: rotate(-7deg); }
+.main-game-ready .quantity-display, .main-game-ready .ball-choice-zone, .main-game-ready .scene-lab, .main-game-ready .scene-preview-label { visibility: hidden !important; }
+.tutorial-handoff .scene-sparky { visibility: visible; }
+.tutorial-confetti { position: absolute; inset: 0; overflow: hidden; }
+.tutorial-confetti i { position: absolute; left: var(--x); top: -30px; width: 12px; height: 24px; background: var(--color); animation: tutorial-confetti 2.4s linear infinite; animation-delay: var(--delay); }
+.tutorial-sound-gate { pointer-events: auto; position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 18px; background: #063862de; backdrop-filter: blur(9px); color: #fff; }
+.tutorial-sound-gate h2 { margin: 0; font-size: clamp(24px,5vw,50px); }
+.tutorial-sound-gate button { padding: 15px 30px; border: 3px solid #fff3ad; border-radius: 22px; background: #ffdb64; color: #123f67; font: 700 18px Fredoka,sans-serif; cursor: pointer; }
+.tutorial-paused *, .tutorial-paused *::before, .tutorial-paused *::after { animation-play-state: paused !important; }
+@keyframes tutorial-sheet { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-50%); } }
+@keyframes tutorial-hint { to { transform: scale(1.07); opacity: .7; } }
+@keyframes tutorial-pointer { from { transform: translateY(0) scaleY(-1); } to { transform: translateY(10px) scaleY(-1); } }
+@keyframes tutorial-confetti { to { transform: translate(70px,850px) rotate(var(--turn)); } }
+@media(max-height:450px) { .tutorial-progress { padding: 8px 12px; top: 12px; } .tutorial-progress b { font-size: 11px; } .tutorial-progress span { font-size: 8px; } .tutorial-mute { top: 72px; left: 18px; } .tutorial-caption { bottom: 4px; padding: 6px 14px; } }

@@ -11,13 +11,18 @@
 	<link rel="stylesheet" href="menu.css">
 	<link rel="stylesheet" href="scene.css">
 	<link rel="stylesheet" href="intro.css">
+	<link rel="stylesheet" href="tutorial.css">
 	<script src="menu.js" defer></script>
 	<script src="intro.js" defer></script>
+	<script src="tutorial.js" defer></script>
 	<script src="scene.js" defer></script>
 </head>
 <body>
 	<main class="menu" aria-label="Kick and Count with Sparky main menu" aria-busy="true">
 		<div class="stadium" aria-hidden="true"></div>
+		<button class="menu-fullscreen" id="menu-fullscreen" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Enter fullscreen" hidden>
+			<svg viewBox="0 0 48 48" aria-hidden="true"><path class="fullscreen-expand" d="M18 7H7v11M30 7h11v11M7 30v11h11M41 30v11H30"/><path class="fullscreen-contract" d="M7 18h11V7M41 18H30V7M18 41V30H7M30 41V30h11"/></svg>
+		</button>
 		<div class="stage" id="stage">
 			<div class="sparky-enter" id="sparky-enter" aria-hidden="true">
 				<div class="sparky-hover">

@@ -37,6 +37,7 @@
   let ballCount = 3;
   let introPlaying = false;
   let tutorialPending = false;
+  let phase = "staging";
   const display = { count: 4, width: 420, variant: "count" };
 
   const paused = () => userPaused || document.hidden || !landscape.matches;
@@ -51,12 +52,13 @@
     frame.style.setProperty("--scene-gutter", `${Math.max(0, (document.documentElement.clientWidth / scale - 1365) / 2)}px`);
     const stopped = paused();
     root.classList.toggle("is-scene-paused", stopped);
-    hud.inert = userPaused || !landscape.matches;
+    hud.inert = userPaused || !landscape.matches || Boolean(root.querySelector(".demo-ending"));
     for (const animation of animations) {
       if (stopped) animation.pause();
       else if (animation.playState === "paused") animation.play();
     }
     window.SparkyIntro?.sync();
+    window.SparkyTutorial?.sync();
   }
 
   async function tween(element, frames, duration = 650, extra = {}) {
@@ -174,7 +176,7 @@
     status.textContent = userPaused ? "Paused" : "Back on the pitch";
   }
 
-  function spawnBalls(count = 3) {
+  function spawnBalls(count = 3, { onBounce } = {}) {
     if (introPlaying) return Promise.resolve(false);
     if (ballEntrancePromise) return ballEntrancePromise;
     ballCount = Math.max(3, Math.min(6, Math.round(Number(count) || 3)));
@@ -245,6 +247,23 @@
             { opacity: .8, transform: "scale(1)" }
           ], duration, { delay, fill: "both", easing: "linear" })
         );
+        if (onBounce && !motion.matches) {
+          // Follow the actual bounce track, so pause/visibility cannot desync audio.
+          const bounce = body.getAnimations()[0];
+          const contacts = [.25, .61, .85, 1];
+          let nextContact = 0, raf;
+          const emitContacts = progress => {
+            while (nextContact < contacts.length && progress >= contacts[nextContact]) {
+              onBounce({ index, bounce: nextContact++ });
+            }
+          };
+          const sample = () => {
+            if (!paused()) emitContacts((Number(bounce.currentTime) - delay) / duration);
+            raf = requestAnimationFrame(sample);
+          };
+          raf = requestAnimationFrame(sample);
+          bounce.finished.then(() => { emitContacts(1); cancelAnimationFrame(raf); }, () => cancelAnimationFrame(raf));
+        }
       }
       await Promise.all(arrivals);
       status.textContent = `${ballCount} test footballs ready.`;
@@ -253,15 +272,72 @@
     return ballEntrancePromise;
   }
 
+  async function startMainGame() {
+    // A clean handoff target; counting rounds will be implemented separately.
+    tutorialPending = false; phase = "main-game";
+    await setShot("wide", { instant: true });
+    for (const element of [panel, document.querySelector(".goal-zone")]) {
+      element.style.opacity = "1"; element.style.transform = "none";
+    }
+    ballZone.replaceChildren();
+    root.classList.add("main-game-ready");
+    root.dataset.scenePhase = phase;
+    status.textContent = "Main-game pitch ready.";
+    root.dispatchEvent(new CustomEvent("sparky:main-game-ready", { bubbles: true }));
+  }
+
+  // Temporary demo ending. Keep replay routing local so it can be removed later.
+  function showDemoEnding() {
+    if (root.querySelector(".demo-ending")) return;
+    const overlay = document.createElement("section");
+    overlay.className = "demo-ending";
+    overlay.setAttribute("role", "dialog"); overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "demo-title");
+    overlay.innerHTML = `<div class="demo-card"><span class="demo-eyebrow">A LITTLE TASTE OF THE FUN</span>
+      <div class="demo-dish" aria-hidden="true"><span>⚽</span><i>✦</i><i>✦</i></div>
+      <h2 id="demo-title">Main game<br><em>is cooking!</em></h2>
+      <strong>Ready to serve soon!</strong><div class="demo-actions">
+      <button type="button" data-replay="intro"><span aria-hidden="true">↻</span> Replay intro<small>The whole adventure</small></button>
+      <button type="button" data-replay="tutorial"><span aria-hidden="true">⚽</span> Replay tutorial<small>Back to the warm-up</small></button>
+      </div><span class="demo-footnote">Thanks for playing the demo!</span></div>`;
+    root.append(overlay); frame.inert = true; hud.inert = true;
+    const buttons = [...overlay.querySelectorAll("button")]; buttons[0].focus({ preventScroll: true });
+    overlay.addEventListener("keydown", event => {
+      if (event.key !== "Tab") return;
+      event.preventDefault(); buttons[(buttons.indexOf(document.activeElement) + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
+    });
+    for (const button of buttons) button.onclick = async () => {
+      for (const item of buttons) item.disabled = true;
+      // Unlock both contexts synchronously inside the replay gesture.
+      window.SparkyIntro.unlock(); window.SparkyTutorial.unlock();
+      overlay.remove(); frame.inert = false; hud.inert = false;
+      phase = "staging"; root.dataset.scenePhase = phase;
+      root.classList.remove("main-game-ready");
+      root.classList.add("tutorial-pending");
+      for (const element of [panel, document.querySelector(".goal-zone")]) {
+        element.style.opacity = "1"; element.style.transform = "none";
+      }
+      await setShot("wide", { instant: true });
+      if (button.dataset.replay === "intro") {
+        introPlaying = true;
+        try { await window.SparkyIntro.play({ replay: true }); }
+        finally { introPlaying = false; }
+      }
+      await window.SparkyTutorial.play();
+    };
+  }
+  root.addEventListener("sparky:tutorial-complete", showDemoEnding);
+
   async function enter() {
     if (entering || active) return;
     entering = true;
     try {
       await preload();
-      active = true;
       const mode = new URLSearchParams(location.search).get("scene");
       const preview = mode === "game";
-      const showIntro = !preview && (mode === "intro" || !window.SparkyIntro?.seen);
+      const showIntro = !preview && mode !== "tutorial";
+      if (!preview) await window.SparkyTutorial.preload();
+      active = true;
       introPlaying = showIntro;
       if (!preview) root.classList.add(showIntro ? "intro-running" : "tutorial-pending");
       setDisplay();
@@ -288,6 +364,10 @@
         root.classList.add("tutorial-pending");
         status.textContent = "Ready for the tutorial. Tutorial sequence will be added next.";
         root.dispatchEvent(new CustomEvent("sparky:tutorial-ready", { bubbles: true }));
+        if (mode !== "intro") {
+          tutorialPending = false;
+          await window.SparkyTutorial.play();
+        }
       }
     } catch (error) {
       const message = document.createElement("button");
@@ -322,6 +402,7 @@
   replayBalls.addEventListener("click", () => spawnBalls(document.getElementById("test-ball-count").value));
   document.addEventListener("keydown", event => {
     if (!active || !landscape.matches) return;
+    if (root.querySelector(".demo-ending")) return;
     if (event.key === "Escape") { event.preventDefault(); setPaused(!userPaused); }
     if (event.key === "Tab" && userPaused) {
       const buttons = [...pauseOverlay.querySelectorAll("button")];
@@ -335,10 +416,10 @@
   landscape.addEventListener("change", syncEnvironment);
   syncEnvironment();
 
-  // Public scene primitives for later cutscenes; no tutorial or game rules yet.
+  // Shared field primitives; tutorial choreography lives in its own director.
   window.SparkyScene = Object.freeze({
-    enter, preload, setShot, setDisplay, setPaused, spawnBalls,
-    get state() { return { active, shot, paused: paused(), display: { ...display }, ballCount, ballsEntering: Boolean(ballEntrancePromise), introPlaying, tutorialPending }; }
+    enter, preload, setShot, setDisplay, setPaused, spawnBalls, startMainGame,
+    get state() { return { active, phase, shot, paused: paused(), display: { ...display }, ballCount, ballsEntering: Boolean(ballEntrancePromise), introPlaying, tutorialPending }; }
   });
-  if (["game", "intro"].includes(new URLSearchParams(location.search).get("scene"))) enter();
+  if (["game", "intro", "tutorial"].includes(new URLSearchParams(location.search).get("scene"))) enter();
 })();

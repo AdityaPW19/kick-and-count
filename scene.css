@@ -55,6 +55,28 @@
 .game-scene button:focus-visible, .game-scene input:focus-visible { outline: 3px solid #fff6ad; outline-offset: 4px; }
 .game-scene.is-scene-paused *, .menu[hidden] * { animation-play-state: paused !important; }
 .scene-error { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 15; max-width: 90vw; padding: 16px 24px; border: 1px solid #fff; border-radius: 16px; background: #063a6a; color: white; }
+.demo-ending { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; padding: 18px; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%,#0776a988,#03294de8); backdrop-filter: blur(10px); animation: demo-reveal .45s ease-out both; }
+.demo-card { position: relative; width: min(600px,94vw); padding: 28px 34px 24px; border: 2px solid #b8f5ff99; border-radius: 32px; background: radial-gradient(ellipse at top,#187da6,#07395f 75%); box-shadow: 0 16px 0 #02284466,0 25px 80px #001c5677,inset 0 1px 0 #fff5; color: white; text-align: center; }
+.demo-eyebrow { color: #ffe18b; font-size: 11px; letter-spacing: 2.5px; }
+.demo-dish { position: relative; margin: 16px auto 10px; width: 94px; height: 72px; border-bottom: 5px solid #9befff; border-radius: 50%; background: radial-gradient(ellipse at bottom,#62e9ff55,transparent 70%); }
+.demo-dish > span { display: inline-block; font-size: 53px; animation: demo-ball 3s ease-in-out infinite; }
+.demo-dish i { position: absolute; top: 5px; left: -15px; color: #ffe18b; font-style: normal; font-size: 24px; }
+.demo-dish i:last-child { left: auto; right: -12px; top: 24px; font-size: 17px; }
+.demo-card h2 { margin: 8px 0 12px; font: 400 clamp(36px,6vh,56px)/.98 Bangers,Impact,sans-serif; letter-spacing: 1px; text-shadow: 0 4px #032d50; }
+.demo-card h2 em { color: #ffe18b; font-style: normal; }
+.demo-card p { max-width: 420px; margin: 0 auto 10px; color: #d8f4ff; font-size: 16px; line-height: 1.45; }
+.demo-card > strong { color: #ffe18b; font-size: 24px; }
+.demo-actions { display: flex; gap: 14px; margin: 24px 0 18px; }
+.demo-actions button { flex: 1; padding: 15px 12px; border: 2px solid #fff0ad; border-radius: 18px; background: linear-gradient(#ffe998,#ffc94b); color: #103b5b; box-shadow: 0 5px 0 #ca8c23,0 9px 16px #001f3b44; font-size: 18px; font-weight: 700; cursor: pointer; transition: transform .18s,filter .18s; }
+.demo-actions button:last-child { border-color: #c2faff; background: linear-gradient(#b2f9ff,#4dd4eb); box-shadow: 0 5px 0 #147caa,0 9px 16px #001f3b44; }
+.demo-actions button > span { margin-right: 6px; }
+.demo-actions small { display: block; margin-top: 5px; font-size: 11px; font-weight: 400; }
+.demo-actions button:hover { transform: translateY(-3px); filter: brightness(1.07); }
+.demo-actions button:active { transform: translateY(3px); }
+.demo-footnote { color: #a8dae9; font-size: 12px; }
+@keyframes demo-reveal { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes demo-ball { 0%,100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-8px) rotate(8deg); } }
+@media(max-height:500px) { .demo-card { width: min(600px,94vw); padding: 18px 26px 16px; } .demo-dish { position: absolute; right: 25px; top: 28px; width: 66px; height: 55px; margin: 0; } .demo-dish > span { font-size: 40px; } .demo-card h2 { font-size: 37px; margin: 12px 0; } .demo-card p { font-size: 14px; max-width: 360px; } .demo-actions { margin: 18px 0 14px; } .demo-actions button { padding: 10px; font-size: 16px; } }
 @keyframes coach-breathe { 0%, 100% { transform: translateY(0) rotate(-.3deg); } 50% { transform: translateY(-3px) rotate(.3deg); } }
 @keyframes display-ball-enter { from { opacity: 0; transform: translateY(8px) scale(.7); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (max-height: 450px) { .scene-preview-label { top: 12px; left: max(14px, env(safe-area-inset-left)); font-size: 9px; padding: 7px 10px; } .lab-controls { padding: 12px; } .lab-heading { margin-bottom: 9px; } .lab-slider { margin: 10px 0; } .scene-pause-card { padding: 20px; } }

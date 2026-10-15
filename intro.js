@@ -23,6 +23,7 @@
     push: `${SPRITES}intro/embarrassed-Hands-raisedr-toward-right.png`,
     flustered: `${SPRITES}intro/flustered-shy-smile.png`,
     messi: "assets/messi/messi-normal-standing-smiling.png",
+    messiLookLeft: "assets/messi/messi-looking-left.png",
     wave: "assets/messi/messi-hand-wave.png",
     notices: "assets/messi/messi-notices-wrong.png",
     angry: "assets/messi/messi-angry.png",
@@ -44,13 +45,30 @@
     music: "assets/audio/music/intro.mp3", horn: "assets/audio/sfx/dj-airhorn-sound-effect.mp3",
     boom: "assets/audio/sfx/vine-boom.mp3", cheers: "assets/audio/sfx/kids-cheering.mp3",
     angryLoop: "assets/messi/que-miras-bobo-messi.mp3",
-    spiderman: "assets/audio/sfx/spiderman-meme-song.mp3"
+    spiderman: "assets/audio/sfx/spiderman-meme-song.mp3",
+    lavaChicken: "assets/audio/music/lava-chicken.mp3"
   };
   let context, master, musicGain, prepared, run, muted = false;
   const buffers = new Map();
   const failed = new Set();
   const sources = new Set();
+  // Retain the decoded image nodes, not just their URLs. They stay mounted for
+  // the whole film so pose changes never replace an image resource mid-frame.
+  const poseImages = new Map();
+  const sheetPoses = new Set(["hi", "wave", "notices", "cheer"]);
   const videoURLs = new Map();
+  let fieldVideo;
+  function prepareFieldVideo() {
+    if (fieldVideo) return fieldVideo;
+    // Optional enhancement: never include this video in the required asset gate.
+    fieldVideo = document.createElement("video");
+    fieldVideo.className = "intro-field-video";
+    fieldVideo.muted = true; fieldVideo.playsInline = true; fieldVideo.loop = true;
+    fieldVideo.preload = "auto"; fieldVideo.setAttribute("aria-hidden", "true");
+    fieldVideo.src = "assets/bg/game-bg-animated2.mp4";
+    fieldVideo.load();
+    return fieldVideo;
+  }
   const videoNames = ["comic-intro-bg", "Abstract_Geometric_intro", "comic-multi-shapes-bg", "anime-speedline-side2", "comic-reveal-effect", "anime-speedline-front"];
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
   const landscape = matchMedia("(orientation: landscape)");
@@ -80,9 +98,13 @@
   async function preload() {
     if (!prepared) prepared = (async () => {
       failed.clear();
+      prepareFieldVideo();
       await Promise.all([...Object.values(poses), "assets/splash/comic-boom.png", "assets/objects/cartoon-football.svg", `${VIDEOS}comic-bg-image.jpg`].map(async path => {
         const image = new Image(); image.src = path;
-        try { await image.decode(); } catch { failed.add(path); }
+        try {
+          await image.decode();
+          if (Object.values(poses).includes(path)) poseImages.set(path, image);
+        } catch { failed.add(path); }
       }));
       const ctx = audioContext();
       if (ctx) await Promise.all(Object.entries(clips).map(async ([key, path]) => {
@@ -161,7 +183,7 @@
     };
   }
 
-  function build() {
+  function build(replay = false) {
     const element = document.createElement("section");
     element.className = "intro-cutscene";
     element.setAttribute("aria-label", "Sparky’s first introduction");
@@ -176,21 +198,43 @@
         <div class="intro-flying-ball" aria-hidden="true"><img src="assets/objects/cartoon-football.svg" alt=""></div>
       </div></div>
       <div class="intro-curtain intro-curtain-left"></div><div class="intro-curtain intro-curtain-right"></div>
-      <div class="intro-controls"><button type="button" class="intro-mute" aria-pressed="false">Sound on</button><button type="button" class="intro-skip">Skip intro</button></div>
+      <div class="intro-controls">
+      <!-- <button type="button" class="intro-mute" aria-pressed="false">Sound on</button> -->
+      <button type="button" class="intro-skip" ${replay ? "" : "hidden"}><span>COACH’S INTRO</span><b>Skip intro <i aria-hidden="true">↠</i></b></button></div>
       <div class="intro-gate" hidden><h2>Meet your coach!</h2><p>Turn up the fun. Tap below to start Sparky’s introduction.</p><button type="button" class="intro-start">Let’s meet Sparky ▶</button><button type="button" class="intro-silent">Watch without sound</button></div>
       <p class="sr-only intro-caption" role="status" aria-live="polite"></p>`;
     scene.append(element);
     const find = selector => element.querySelector(selector);
+    for (const [name, path] of Object.entries(poses)) {
+      const actor = ["messi", "messiLookLeft", "wave", "notices", "angry", "angryLeft"].includes(name)
+        ? find(".intro-messi") : find(".intro-sparky");
+      const image = poseImages.get(path);
+      image.className = `intro-pose${sheetPoses.has(name) ? " is-pose-sheet" : ""}`;
+      image.dataset.pose = name;
+      image.alt = ""; image.draggable = false;
+      image.setAttribute("aria-hidden", "true");
+      actor.querySelector(".intro-actor-art").append(image);
+    }
     const state = {
       element, find, time: 0, last: 0, raf: 0, animations: new Set(), waits: new Set(),
       paused: false, gate: false, done: false, skipped: false, beat: "loading", readyClick: null, history: []
     };
+    state.fieldVideo = prepareFieldVideo(); state.fieldVideoActive = false;
+    document.querySelector(".field-world").append(state.fieldVideo);
+    state.fieldVideo.onplaying = () => {
+      if (!state.done && state.fieldVideoActive && !state.paused && !motion.matches)
+        state.fieldVideo.classList.add("is-playing");
+    };
+    for (const event of ["error", "waiting", "stalled", "emptied"])
+      state.fieldVideo[`on${event}`] = () => state.fieldVideo.classList.remove("is-playing");
+    /* Sound toggle disabled for the demo.
     find(".intro-mute").addEventListener("click", () => {
       muted = !muted;
       if (master) master.gain.value = muted ? 0 : 1;
       find(".intro-mute").textContent = muted ? "Sound off" : "Sound on";
       find(".intro-mute").setAttribute("aria-pressed", String(muted));
     });
+    */
     find(".intro-skip").addEventListener("click", () => { state.skipped = true; stopRun(state); });
     function frame(now) {
       if (!state.last) state.last = now;
@@ -227,6 +271,12 @@
     }
     const video = run.find("video");
     if (stopped || motion.matches) video.pause(); else if (video.src) video.play().catch(() => {});
+    if (stopped || motion.matches || !run.fieldVideoActive) {
+      run.fieldVideo.pause();
+      if (motion.matches || !run.fieldVideoActive) run.fieldVideo.classList.remove("is-playing");
+    } else {
+      run.fieldVideo.play().catch(() => run.fieldVideo.classList.remove("is-playing"));
+    }
     resize();
   }
 
@@ -261,11 +311,13 @@
   function pose(actor, name, mode = "") {
     actor.classList.remove("is-talking", "is-listening", "is-waving", "is-pushing", "is-angry", "is-peeking", "is-sheet");
     if (mode) actor.classList.add(`is-${mode}`);
-    if (["hi", "wave", "notices", "cheer"].includes(name)) actor.classList.add("is-sheet");
+    if (sheetPoses.has(name)) actor.classList.add("is-sheet");
     actor.dataset.pose = name;
-    actor.style.setProperty("--angry-front", `url("${poses.angry}")`);
-    actor.style.setProperty("--angry-left", `url("${poses.angryLeft}")`);
-    actor.querySelector(".intro-actor-art").style.backgroundImage = `url("${poses[name]}")`;
+    // Atomically change visibility of already decoded nodes. No src/background
+    // replacement, remove/insert cycle or empty frame between individual poses.
+    for (const image of actor.querySelectorAll(".intro-pose")) {
+      image.classList.toggle("is-current", image.dataset.pose === name);
+    }
   }
   async function say(key, caption, { actor, mid, midAt, onEnd, fallback = 3200 } = {}) {
     beat(key);
@@ -325,6 +377,7 @@
     const sparky = run.find(".intro-sparky"), messi = run.find(".intro-messi");
     const composition = run.find(".intro-composition");
     // Start on the empty field: only ground and goal, no display or choice balls.
+    run.fieldVideoActive = true; sync();
     beat("empty-field"); await wait(450);
     pose(sparky, "surprised", "peeking");
     sparky.style.cssText = "left:420px;top:235px;width:690px;height:690px;";
@@ -336,6 +389,8 @@
     await say("dekho", "Dekho!", { actor: sparky });
     await say("arrival2", "Woh aa gaya!", { actor: sparky });
     await animate(sparky, [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(-620px)" }], 300);
+    run.fieldVideoActive = false;
+    run.fieldVideo.classList.remove("is-playing"); run.fieldVideo.pause();
     pose(sparky, "hi", "waving"); sparky.style.cssText = "left:155px;top:220px;width:500px;height:500px;";
     await animate(sparky, [{ opacity: 0, transform: "translateY(55px) scale(.9)" }, { opacity: 1, transform: "translateY(0) scale(1)" }], 500);
     await say("hello", "Hello, champ!", { actor: sparky });
@@ -361,7 +416,14 @@
       animate(messi, [{ opacity: 1, transform: "translateX(850px) rotate(12deg) scale(.8)" }, { opacity: 1, transform: "translateX(-15px) rotate(-3deg) scale(1.03)", offset: .8 }, { opacity: 1, transform: "translateX(0) rotate(0) scale(1)" }], 850)
     ]);
     await comic("<small>THE ONE. THE ONLY.</small>THE GOAT!", "is-goat"); sparkles();
-    await say("goat", "The GOAT!");
+    await Promise.all([
+      say("goat", "The GOAT!"),
+      (async () => {
+        pose(messi, "messiLookLeft", "listening");
+        await wait(1000);
+        pose(messi, "messi", "listening");
+      })()
+    ]);
     // The splash lingers independently while the next scene and dialogue proceed.
     await Promise.all([
       (async () => {
@@ -410,7 +472,8 @@
     const fadeMemeOnExit = (async () => {
       await wait(Math.max(0, pushDuration - 650));
       await memeMusic.fadeOut(650);
-      run.musicTrack.resume();
+      run.musicTrack.stop();
+      run.musicTrack = sound("lavaChicken", { loop: true, music: true, volume: 1.9 });
     })();
     await Promise.all([
       fadeMemeOnExit,
@@ -485,6 +548,9 @@
     for (const animation of state.animations) animation.cancel();
     for (const source of [...sources]) { try { source.stop(); } catch { /* Already stopped. */ } }
     state.find("video").pause();
+    state.fieldVideoActive = false;
+    state.fieldVideo.pause(); state.fieldVideo.classList.remove("is-playing");
+    state.fieldVideo.remove();
   }
 
   async function audioGate() {
@@ -493,22 +559,23 @@
     const gate = run.find(".intro-gate"); gate.hidden = false;
     await new Promise(resolve => {
       run.find(".intro-start").onclick = async () => { await unlock(); if (context.state === "running") resolve(); };
-      run.find(".intro-silent").onclick = () => { muted = true; master.gain.value = 0; run.find(".intro-mute").textContent = "Sound off"; resolve(); };
+      run.find(".intro-silent").onclick = () => { muted = true; master.gain.value = 0; resolve(); };
       gate.addEventListener("intro:cancel", resolve, { once: true });
     });
     assertRunning(); gate.hidden = true; run.gate = false; sync();
   }
 
-  async function play() {
+  async function play({ replay = false } = {}) {
     if (run && !run.done) return false;
     await preload();
-    run = build(); scene.classList.add("intro-running"); resize(); sync();
+    run = build(replay || completedInMemory || api.seen); scene.classList.add("intro-running"); resize(); sync();
     let completed = false;
     try {
       await audioGate();
       if (failed.size) console.warn("Intro assets unavailable; using visual/caption fallback:", [...failed]);
       run.musicTrack = sound("music", { loop: true, music: true });
       await choreography(); completed = true;
+      completedInMemory = true;
       if (!preview) {
         completedInMemory = true;
         try { localStorage.setItem(KEY, "true"); } catch { /* Session fallback if persistent storage is unavailable. */ }
