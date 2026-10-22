@@ -45,6 +45,7 @@
     music: "assets/audio/music/intro.mp3", horn: "assets/audio/sfx/dj-airhorn-sound-effect.mp3",
     boom: "assets/audio/sfx/vine-boom.mp3", cheers: "assets/audio/sfx/kids-cheering.mp3",
     angryLoop: "assets/messi/que-miras-bobo-messi.mp3",
+    goatMeh: "assets/messi/goat-meh.mp3",
     spiderman: "assets/audio/sfx/spiderman-meme-song.mp3",
     lavaChicken: "assets/audio/music/lava-chicken.mp3"
   };
@@ -434,7 +435,10 @@
       (async () => {
         await background("comic-multi-shapes-bg");
         pose(sparky, "proud2");
-        await say("wave", "Messi bhai, hi bolo sabko!", { actor: sparky, mid: () => pose(messi, "wave", "waving") });
+        await say("wave", "Messi bhai, hi bolo sabko!", { actor: sparky, mid: () => {
+          pose(messi, "wave", "waving");
+          sound("goatMeh", { volume: .65 }); // Async response; do not delay the film.
+        } });
       })()
     ]);
     await wait(800); pose(sparky, "cocky");

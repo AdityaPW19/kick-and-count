@@ -36,8 +36,8 @@
 .tutorial-ball-number::before { content: ""; position: absolute; inset: 9px; z-index: -1; background: radial-gradient(ellipse,#fffffff5 0%,#ffffffeb 32%,#ffffff99 52%,#ffffff00 74%); filter: blur(4px); }
 .tutorial-choosing .choice-ball { pointer-events: auto; cursor: pointer; border-radius: 50%; }
 .tutorial-choosing .choice-ball:focus-visible { outline: 5px solid #fff3a6; outline-offset: 9px; }
-.tutorial-choosing .choice-ball[data-number="2"]::before { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 20px 8px #fff59b99, 0 0 42px 16px #fff05c66; }
-.tutorial-choosing .choice-ball[data-number="2"]::after { content: ""; position: absolute; width: 78px; height: 78px; left: 15px; top: -100px; background: url("assets/ui/finger-pointer.png") center / contain no-repeat; transform: scaleY(-1); filter: drop-shadow(0 4px 3px #123f6740); pointer-events: none; animation: tutorial-pointer .7s ease-in-out infinite alternate; }
+.tutorial-choosing:not(.next-tutorial-running) .choice-ball[data-number="2"]::before, .next-tutorial-running.tutorial-choosing .choice-ball[data-number="11"]::before { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 20px 8px #fff59b99, 0 0 42px 16px #fff05c66; }
+.tutorial-choosing:not(.next-tutorial-running) .choice-ball[data-number="2"]::after, .next-tutorial-running.tutorial-choosing .choice-ball[data-number="11"]::after { content: ""; position: absolute; width: 78px; height: 78px; left: 15px; top: -100px; background: url("assets/ui/finger-pointer.png") center / contain no-repeat; transform: scaleY(-1); filter: drop-shadow(0 4px 3px #123f6740); pointer-events: none; animation: tutorial-pointer .7s ease-in-out infinite alternate; }
 .choice-ball.is-selected { filter: drop-shadow(0 0 16px #fff36b); }
 .choice-ball.is-counting { filter: drop-shadow(0 0 22px #fff36b); }
 .panel-ball.is-counting { transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 5px #fff36b) drop-shadow(0 0 9px #fff36b); }
@@ -62,6 +62,14 @@
 .tutorial-sound-gate h2 { margin: 0; font-size: clamp(24px,5vw,50px); }
 .tutorial-sound-gate button { padding: 15px 30px; border: 3px solid #fff3ad; border-radius: 22px; background: #ffdb64; color: #123f67; font: 700 18px Fredoka,sans-serif; cursor: pointer; }
 .tutorial-paused *, .tutorial-paused *::before, .tutorial-paused *::after { animation-play-state: paused !important; }
+.next-montage-coach { z-index: 3; pointer-events: none; }
+.next-montage-running .quantity-display, .next-montage-running .goal-zone, .next-montage-running .ball-choice-zone { visibility: hidden !important; }
+.next-tutorial-running .tutorial-cinema video { position: absolute; inset: 0; }
+.next-field-hint { position: absolute; left: 470px; top: 466px; width: 425px; margin: 0; text-align: center; color: #fff; font: 600 26px Fredoka,sans-serif; text-shadow: 0 2px 4px #123554; }
+.next-montage-number { position: absolute; z-index: 4; width: 520px; text-align: center; font: 400 430px/.95 Bangers,Impact,sans-serif; -webkit-text-stroke: 10px #123554; paint-order: stroke fill; text-shadow: 12px 15px #123554, 22px 22px #ff4e82; pointer-events: none; }
+.next-montage-kicker { position: absolute; left: 60px; right: 60px; bottom: 28px; text-align: center; color: #fff; font: 48px/1 Bangers,Impact,sans-serif; letter-spacing: 4px; -webkit-text-stroke: 3px #123554; paint-order: stroke fill; text-shadow: 3px 4px #123554; }
+.next-tutorial-running .tutorial-cinema { background: #ffce3d url("assets/comic-effect-bg/comic-bg-image.jpg") center/cover; }
+@media (prefers-reduced-motion: reduce) { .tutorial-pose.is-sheet.is-current, .tutorial-coach.is-speaking .tutorial-coach-art, .tutorial-confetti i, .tutorial-choosing .choice-ball::after { animation: none; } }
 @keyframes tutorial-sheet { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-50%); } }
 @keyframes tutorial-hint { to { transform: scale(1.07); opacity: .7; } }
 @keyframes tutorial-pointer { from { transform: translateY(0) scaleY(-1); } to { transform: translateY(10px) scaleY(-1); } }

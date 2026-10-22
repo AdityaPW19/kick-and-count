@@ -38,7 +38,7 @@
   let introPlaying = false;
   let tutorialPending = false;
   let phase = "staging";
-  const display = { count: 4, width: 420, variant: "count" };
+  const display = { count: 4, width: 420, variant: "count", number: null };
 
   const paused = () => userPaused || document.hidden || !landscape.matches;
   const transformFor = ({ x, y, zoom }) =>
@@ -59,6 +59,7 @@
     }
     window.SparkyIntro?.sync();
     window.SparkyTutorial?.sync();
+    window.SparkyGame?.sync();
   }
 
   async function tween(element, frames, duration = 650, extra = {}) {
@@ -98,7 +99,8 @@
   function setDisplay(options = {}) {
     if (options.count !== undefined) display.count = Math.max(1, Math.min(20, Math.round(Number(options.count) || 1)));
     if (options.width !== undefined) display.width = Math.max(300, Math.min(620, Number(options.width) || 420));
-    if (["count", "message", "celebrate"].includes(options.variant)) display.variant = options.variant;
+    if (["count", "message", "celebrate", "number", "sequence"].includes(options.variant)) display.variant = options.variant;
+    if (options.number !== undefined) display.number = options.number === null ? null : Math.max(0, Math.min(100, Math.round(Number(options.number) || 0)));
     const { count, width, variant } = display;
     const columns = Math.max(1, Math.floor((width - 70) / 55));
     const rows = Math.ceil(count / columns);
@@ -114,6 +116,16 @@
         const x = width / 2 - items * 55 / 2 + (index % columns) * 55 + (55 - ballSize) / 2;
         content += `<image class="panel-ball" style="--ball-index:${index}" href="assets/objects/cartoon-football.svg" x="${x}" y="${61 + row * rowPitch}" width="${ballSize}" height="${ballSize}"/>`;
       }
+    } else if (variant === "sequence") {
+      const number = Math.max(1, Math.min(98, display.number || 1));
+      const values = Array.from({ length: Math.min(3, number) }, (_, i) => number - Math.min(2, number - 1) + i);
+      // A single naturally measured text run centers the whole sequence, not
+      // individual columns stretched across the board (especially "1 …").
+      content = `<text x="${width / 2}" y="116" font-size="${number > 9 ? 64 : 76}" font-weight="700">`
+        + values.map((value, i) => `<tspan fill="${value === number ? '#fff2ab' : '#c5d9ef'}">${value}${i < values.length - 1 ? ', ' : ''}</tspan>`).join('')
+        + `<tspan dx="10" font-size="52" fill="#fff2ab">…</tspan></text>`;
+    } else if (variant === "number") {
+      content = display.number === null ? "" : `<text x="${width / 2}" y="124" font-size="100" fill="#fff2ab" font-weight="700">${display.number}</text>`;
     } else {
       content = variant === "message"
         ? `<text x="${width / 2}" y="89" font-size="24" fill="#fff" font-weight="900">READY TO KICK?</text><text x="${width / 2}" y="115" font-size="13" fill="#c5d9ef">Space for prompts &amp; story beats</text>`
@@ -123,6 +135,8 @@
     panel.style.height = `${height}px`;
     panel.style.left = `${682.5 - width / 2}px`;
     panel.setAttribute("aria-label", variant === "count" ? `${count} football${count === 1 ? "" : "s"} on the quantity display` : variant === "message" ? "Ready to kick?" : "Goal celebration display");
+    if (variant === "number") panel.setAttribute("aria-label", display.number === null ? "Empty number display" : `Number ${display.number}`);
+    if (variant === "sequence") panel.setAttribute("aria-label", `${Array.from({ length: Math.min(3, display.number) }, (_, i) => display.number - Math.min(2, display.number - 1) + i).join(', ')}, what comes next?`);
     panel.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
       <defs>
         <linearGradient id="board-rim" x2="0" y2="1"><stop stop-color="#eefcff"/><stop offset=".5" stop-color="#74a5c2"/><stop offset="1" stop-color="#d7eeef"/></linearGradient>
@@ -136,8 +150,8 @@
       <rect x="12" y="11" width="${width - 24}" height="${height - 26}" rx="16" fill="url(#board-face)" stroke="${accent}" stroke-width="2"/>
       <rect x="15" y="14" width="${width - 30}" height="${height - 32}" rx="14" fill="url(#board-dots)"/>
       <g text-anchor="middle" font-family="Fredoka, system-ui, sans-serif">
-        <text x="${width / 2}" y="40" font-size="11" font-weight="900" letter-spacing="3" fill="${accent}">${variant === "count" ? "COUNT THE FOOTBALLS" : variant === "message" ? "COACH’S CORNER" : "SUPER KICK"}</text>
-        ${content}
+        <text x="${width / 2}" y="40" font-size="11" font-weight="900" letter-spacing="3" fill="${accent}">${variant === "count" ? "COUNT THE FOOTBALLS" : ["number", "sequence"].includes(variant) ? "" : variant === "message" ? "COACH’S CORNER" : "SUPER KICK"}</text>
+        <g class="panel-content">${content}</g>
       </g>
     </svg>`;
     document.getElementById("display-count").value = count;
@@ -266,7 +280,7 @@
         }
       }
       await Promise.all(arrivals);
-      status.textContent = `${ballCount} test footballs ready.`;
+      status.textContent = `${ballCount} football choices ready.`;
       root.dispatchEvent(new CustomEvent("sparky:balls-ready", { detail: { count: ballCount }, bubbles: true }));
     })().finally(() => { ballEntrancePromise = undefined; replayBalls.disabled = false; });
     return ballEntrancePromise;
@@ -286,47 +300,18 @@
     root.dispatchEvent(new CustomEvent("sparky:main-game-ready", { bubbles: true }));
   }
 
-  // Temporary demo ending. Keep replay routing local so it can be removed later.
-  function showDemoEnding() {
-    if (root.querySelector(".demo-ending")) return;
-    const overlay = document.createElement("section");
-    overlay.className = "demo-ending";
-    overlay.setAttribute("role", "dialog"); overlay.setAttribute("aria-modal", "true");
-    overlay.setAttribute("aria-labelledby", "demo-title");
-    overlay.innerHTML = `<div class="demo-card"><span class="demo-eyebrow">A LITTLE TASTE OF THE FUN</span>
-      <div class="demo-dish" aria-hidden="true"><span>⚽</span><i>✦</i><i>✦</i></div>
-      <h2 id="demo-title">Main game<br><em>is cooking!</em></h2>
-      <strong>Ready to serve soon!</strong><div class="demo-actions">
-      <button type="button" data-replay="intro"><span aria-hidden="true">↻</span> Replay intro<small>The whole adventure</small></button>
-      <button type="button" data-replay="tutorial"><span aria-hidden="true">⚽</span> Replay tutorial<small>Back to the warm-up</small></button>
-      </div><span class="demo-footnote">Thanks for playing the demo!</span></div>`;
-    root.append(overlay); frame.inert = true; hud.inert = true;
-    const buttons = [...overlay.querySelectorAll("button")]; buttons[0].focus({ preventScroll: true });
-    overlay.addEventListener("keydown", event => {
-      if (event.key !== "Tab") return;
-      event.preventDefault(); buttons[(buttons.indexOf(document.activeElement) + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
-    });
-    for (const button of buttons) button.onclick = async () => {
-      for (const item of buttons) item.disabled = true;
-      // Unlock both contexts synchronously inside the replay gesture.
-      window.SparkyIntro.unlock(); window.SparkyTutorial.unlock();
-      overlay.remove(); frame.inert = false; hud.inert = false;
-      phase = "staging"; root.dataset.scenePhase = phase;
-      root.classList.remove("main-game-ready");
-      root.classList.add("tutorial-pending");
-      for (const element of [panel, document.querySelector(".goal-zone")]) {
-        element.style.opacity = "1"; element.style.transform = "none";
-      }
-      await setShot("wide", { instant: true });
-      if (button.dataset.replay === "intro") {
-        introPlaying = true;
-        try { await window.SparkyIntro.play({ replay: true }); }
-        finally { introPlaying = false; }
-      }
-      await window.SparkyTutorial.play();
-    };
-  }
-  root.addEventListener("sparky:tutorial-complete", showDemoEnding);
+  root.addEventListener("sparky:tutorial-complete", () => {
+    if (!window.SparkyGame.state.helpPlaying) void window.SparkyGame.start();
+  });
+  window.addEventListener("sparky:game-start", () => {
+    document.getElementById("game-info").hidden = false;
+    document.getElementById("game-tutorial").hidden = false;
+    document.getElementById("scene-wide").hidden = true;
+  });
+  window.addEventListener("sparky:game-stop", () => {
+    document.getElementById("game-info").hidden = true;
+    document.getElementById("game-tutorial").hidden = true;
+  });
 
   async function enter() {
     if (entering || active) return;
@@ -334,9 +319,13 @@
     try {
       await preload();
       const mode = new URLSearchParams(location.search).get("scene");
-      const preview = mode === "game";
-      const showIntro = !preview && mode !== "tutorial";
-      if (!preview) await window.SparkyTutorial.preload();
+      const preview = mode === "lab";
+      let tutorialSeen = false;
+      try { tutorialSeen = localStorage.getItem("sparky.tutorial.completed.v1") === "true"; } catch { /* Session-only. */ }
+      const playDirect = mode === "game" || (!mode && window.SparkyIntro.seen && tutorialSeen);
+      const showIntro = !preview && !playDirect && !["tutorial", "next-tutorial"].includes(mode);
+      if (!preview && !playDirect) await window.SparkyTutorial.preload();
+      if (!preview) await window.SparkyGame.preload();
       active = true;
       introPlaying = showIntro;
       if (!preview) root.classList.add(showIntro ? "intro-running" : "tutorial-pending");
@@ -356,17 +345,21 @@
       status.textContent = "Scene preview ready. Open Scene lab to test camera shots and the display.";
       root.dispatchEvent(new CustomEvent("sparky:scene-ready", { bubbles: true }));
       if (preview) await spawnBalls(3);
+      else if (playDirect) { await startMainGame(); await window.SparkyGame.start(); }
       else {
         if (showIntro) await window.SparkyIntro.play();
         introPlaying = false;
         tutorialPending = true;
         root.classList.remove("intro-running");
         root.classList.add("tutorial-pending");
-        status.textContent = "Ready for the tutorial. Tutorial sequence will be added next.";
+        status.textContent = mode === "next-tutorial" ? "Ready for What Comes Next?" : "Ready for Sparky’s counting warm-up.";
         root.dispatchEvent(new CustomEvent("sparky:tutorial-ready", { bubbles: true }));
         if (mode !== "intro") {
           tutorialPending = false;
-          await window.SparkyTutorial.play();
+          if (mode === "next-tutorial") {
+            await window.SparkyNextTutorial.startTutorial({ preview: true });
+            await startMainGame(); await window.SparkyGame.start({ quickIntro: false });
+          } else await window.SparkyTutorial.play();
         }
       }
     } catch (error) {
@@ -385,6 +378,9 @@
   document.addEventListener("sparky:transition-complete", enter);
   pauseButton.addEventListener("click", () => setPaused(true));
   resumeButton.addEventListener("click", () => setPaused(false));
+  document.getElementById("game-info").addEventListener("click", () => { void window.SparkyGame.replayHelp("onboarding"); });
+  document.getElementById("game-tutorial").addEventListener("click", () => { void window.SparkyGame.replayHelp("tutorial"); });
+  document.getElementById("game-exit").addEventListener("click", () => { window.SparkyGame.stop(); location.href = location.pathname; });
   document.getElementById("scene-wide").addEventListener("click", () => { setPaused(false); setShot("wide"); });
   document.getElementById("lab-toggle").addEventListener("click", event => {
     const controls = document.getElementById("lab-controls");
@@ -405,7 +401,7 @@
     if (root.querySelector(".demo-ending")) return;
     if (event.key === "Escape") { event.preventDefault(); setPaused(!userPaused); }
     if (event.key === "Tab" && userPaused) {
-      const buttons = [...pauseOverlay.querySelectorAll("button")];
+      const buttons = [...pauseOverlay.querySelectorAll("button")].filter(button => !button.hidden);
       const first = buttons[0], last = buttons[buttons.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
@@ -421,5 +417,5 @@
     enter, preload, setShot, setDisplay, setPaused, spawnBalls, startMainGame,
     get state() { return { active, phase, shot, paused: paused(), display: { ...display }, ballCount, ballsEntering: Boolean(ballEntrancePromise), introPlaying, tutorialPending }; }
   });
-  if (["game", "intro", "tutorial"].includes(new URLSearchParams(location.search).get("scene"))) enter();
+  if (["game", "intro", "tutorial", "next-tutorial", "lab"].includes(new URLSearchParams(location.search).get("scene"))) enter();
 })();

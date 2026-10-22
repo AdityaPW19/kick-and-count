@@ -27,6 +27,23 @@ Each mode will have its own tutorial, predefined phases, question generator and 
 
 For now, only integrate the existing Kick & Count mode and the new What Comes Next mode. Register the remaining four as future modes with integration interfaces, but do not invent their mechanics or data.
 
+### Current two-mode implementation
+
+Both implemented modes share the same pitch, kick/feedback loop and director breaks.
+After counting's opening two phases/breaks, play the approved successor tutorial
+once and its opening two phases/breaks. While the other four modes are unavailable,
+rotate only these two playable adapters using the 65% two-phase / 35% one-phase
+schedule below, preserving both mode saves. This provisional state is recorded as
+`available_rotation`, **not** six-mode onboarding completion: `onboardingComplete`
+remains false and `onboardingDeferred` records the unavailable tutorials. No future
+mode, tutorial, or question is fabricated. The registry keeps those modes nonplayable.
+
+The master save owns routing/quota/shuffle-bag and a durable pending break plan;
+per-mode saves own their questions. Persist the plan before presentation, acknowledge
+the mode checkpoint after presentation, then commit the planned route. On reload,
+an already-acknowledged engine checkpoint commits its pending route without replaying
+that break. Counting's existing phase-17 champion substitutes for its final checkpoint.
+
 ## 2. First-Time Onboarding Progression
 
 When a child plays for the first time, introduce the six modes sequentially.

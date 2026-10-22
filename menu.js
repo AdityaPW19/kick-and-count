@@ -47,7 +47,7 @@
   const menuAudioSources = new Set();
 
   async function prepareMenuAudio() {
-    if (["game", "intro", "tutorial"].includes(new URLSearchParams(location.search).get("scene"))) return;
+    if (["game", "intro", "tutorial", "next-tutorial", "lab"].includes(new URLSearchParams(location.search).get("scene"))) return;
     const Constructor = window.AudioContext || window.webkitAudioContext;
     if (!Constructor) return;
     menuAudioContext = new Constructor();
@@ -90,6 +90,7 @@
   function prepareNextScene() {
     if (!nextAssetsPromise) nextAssetsPromise = Promise.all([
       window.SparkyScene.preload(),
+      window.SparkyGame.preload(),
       window.SparkyTutorial.preload(),
       window.SparkyIntro.preload()
     ]).catch(error => { nextAssetsPromise = undefined; throw error; });
@@ -468,6 +469,7 @@
   });
   document.addEventListener("pointerdown", syncMenuAudio);
   document.addEventListener("keydown", syncMenuAudio);
+  document.addEventListener("sparky:play", () => { window.SparkyDirector?.unlock(); });
 
   window.addEventListener("resize", syncViewport);
   landscape.addEventListener("change", syncViewport);

@@ -1,0 +1,111 @@
+/* Load after scene.css, tutorial.css and director.css. Pause UI stays scene-owned. */
+.game-scene.main-game-running .quantity-display,
+.game-scene.main-game-running .ball-choice-zone {
+  visibility: visible !important;
+  opacity: 1;
+}
+.game-scene.main-game-running:not(.main-question-visible) .quantity-display { visibility: hidden !important; }
+.game-scene.main-game-running:not(.main-options-visible) .ball-choice-zone { visibility: hidden !important; }
+.game-scene.main-presentation .quantity-display,
+.game-scene.main-presentation .ball-choice-zone { visibility: hidden !important; }
+.game-scene.main-game-running .scene-sparky,
+.game-scene.main-game-running .scene-lab,
+.game-scene.main-game-running .scene-preview-label { display: none !important; }
+.game-scene.main-game-running .game-coach { visibility: visible; }
+.main-game-running .ball-choice-zone { z-index: 5; }
+.main-game-running .choice-ball {
+  pointer-events: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.main-game-running.main-game-answering .choice-ball { pointer-events: auto; cursor: pointer; }
+.main-game-running .choice-ball:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border: 4px solid #fff6ad;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #164f79, 0 0 26px #fff6ad99;
+  pointer-events: none;
+}
+.main-game-running .choice-ball.main-ball-selected { z-index: 10; }
+/* Same sticker treatment/palette as practice; never recolor the football art. */
+.main-game-running .tutorial-ball-number {
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  pointer-events: none;
+  color: var(--number-color, #1554ed);
+  font: 700 62px/1 Fredoka, sans-serif;
+  -webkit-text-stroke: 8px #fff;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 3px 1px #15335365) drop-shadow(0 5px 5px #102c4b55);
+}
+.main-game-running .tutorial-ball-number::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  z-index: -1;
+  background: radial-gradient(ellipse, #fffffff5 0%, #ffffffeb 32%, #ffffff99 52%, #ffffff00 74%);
+  filter: blur(4px);
+}
+.main-game-hint {
+  position: absolute;
+  left: 470px;
+  top: 557px;
+  width: 425px;
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font: 600 23px/1.2 Fredoka, sans-serif;
+  text-shadow: 0 2px 3px #184a36;
+  pointer-events: none;
+}
+.main-mode-label { z-index: 13; pointer-events: none; }
+.main-mode-label b { margin-top: 0; }
+.main-game-debug {
+  position: absolute;
+  z-index: 19;
+  left: max(12px, env(safe-area-inset-left));
+  top: max(12px, env(safe-area-inset-top));
+  width: min(490px, 70vw);
+  max-height: calc(100dvh - 28px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #8596a6;
+  border-radius: 4px;
+  background: #f8fafcf5;
+  color: #172635;
+  font: 12px/1.4 ui-monospace, Consolas, monospace;
+  pointer-events: auto;
+  user-select: text;
+}
+.main-debug-actions { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.main-debug-actions button {
+  padding: 5px 7px;
+  border: 1px solid #8596a6;
+  border-radius: 3px;
+  background: #fff;
+  color: #172635;
+  font: inherit;
+  cursor: pointer;
+}
+.main-debug-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.main-game-debug details { margin: 8px 0; }
+.main-game-debug summary { cursor: pointer; }
+.main-game-debug pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.main-game-running .ball-choice-zone[inert],
+.main-game-running .ball-choice-zone[inert] * { pointer-events: none !important; }
+.game-info { position: absolute; left: max(18px,env(safe-area-inset-left)); top: max(18px,env(safe-area-inset-top)); width: 48px; height: 48px; border: 2px solid #a8f3ff; border-radius: 50%; background: linear-gradient(#1887b6,#075085); box-shadow: 0 4px 0 #033a63, inset 0 2px #ffffff55; color: #fff0ad; font: 700 30px/1 Fredoka,sans-serif; cursor: pointer; }
+.main-game-running .scene-hud { z-index: 15; }
+.main-game-running .scene-pause-overlay { z-index: 30; }
+.scene-pause-card { position: relative; width: min(430px,90vw); border: 2px solid #a8edff; border-radius: 30px; background: radial-gradient(ellipse at top,#1788b3,#07385f 80%); box-shadow: 0 12px 0 #022e5266,0 25px 70px #001d4c66,inset 0 1px #fff5; }
+.scene-pause-card h2 { font: 400 clamp(32px,6vh,46px)/1 Bangers,Impact,sans-serif; color: #fff0a6; text-shadow: 2px 3px #04304d; }
+.scene-pause-card #scene-resume { background: linear-gradient(#fff0a6,#ffcd53); box-shadow: 0 5px 0 #bc8422; }
+.scene-pause-card .pause-secondary { border: 1px solid #9de9ff77; background: #0e648b66; padding: 11px 14px; border-radius: 15px; font-size: 15px; }
+.scene-pause-card #game-exit { background: transparent; color: #a8d5e7; border-color: #8ac8df44; }
+@media(max-height:450px) { .scene-pause-card { padding: 18px 24px; } .scene-pause-card h2 { margin: 8px 0; } .scene-pause-card p { margin-bottom: 12px; } .scene-pause-card .pause-secondary { margin-top: 9px; padding: 8px 12px; } .game-info { width: 42px; height: 42px; font-size: 26px; } }

@@ -12,9 +12,18 @@
 	<link rel="stylesheet" href="scene.css">
 	<link rel="stylesheet" href="intro.css">
 	<link rel="stylesheet" href="tutorial.css">
+	<link rel="stylesheet" href="game/director.css">
+	<link rel="stylesheet" href="game/main.css">
 	<script src="menu.js" defer></script>
 	<script src="intro.js" defer></script>
 	<script src="tutorial.js" defer></script>
+	<script src="game/progression/engine.js" defer></script>
+	<script src="game/progression/next-engine.js" defer></script>
+	<script src="game/progression/master.js" defer></script>
+	<script src="game/wizzle-story.js" defer></script>
+	<script src="game/director.js" defer></script>
+	<script src="game/ball-physics.js" defer></script>
+	<script src="game/main.js" defer></script>
 	<script src="scene.js" defer></script>
 </head>
 <body>
@@ -77,7 +86,7 @@
 		<p class="sr-only" id="menu-status" role="status" aria-live="polite"></p>
 	</main>
 
-	<section class="game-scene" id="game-scene" aria-label="Kick and Count field — scene systems preview" hidden>
+	<section class="game-scene" id="game-scene" aria-label="Kick and Count football field" hidden>
 		<div class="scene-backdrop" aria-hidden="true"></div>
 		<div class="scene-frame" id="scene-frame">
 			<div class="scene-camera" id="scene-camera">
@@ -122,11 +131,14 @@
 			</div>
 		</div>
 		<div class="scene-pause-overlay" id="scene-pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden>
+			<button class="game-info" id="game-info" type="button" aria-label="Watch Sparky’s introduction again" hidden>i</button>
 			<div class="scene-pause-card">
-				<span class="pause-eyebrow">TIME OUT!</span>
-				<h2 id="pause-title">Catch your breath.</h2>
-				<p>The pitch will be right here.</p>
-				<button type="button" id="scene-resume">Back to the pitch <span aria-hidden="true">▶</span></button>
+				<span class="pause-eyebrow">HALF-TIME HUDDLE</span>
+				<h2 id="pause-title">Take a breather!</h2>
+				<p>Your next goal can wait.</p>
+				<button type="button" id="scene-resume">Continue <span aria-hidden="true">▶</span></button>
+				<button class="pause-secondary" type="button" id="game-tutorial" hidden>Practice with Sparky ⚽</button>
+				<button class="pause-secondary" type="button" id="game-exit">Exit to main menu ↩</button>
 				<button class="pause-secondary" type="button" id="scene-wide">Resume in wide shot</button>
 			</div>
 		</div>

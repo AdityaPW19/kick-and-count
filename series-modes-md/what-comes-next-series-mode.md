@@ -18,6 +18,12 @@ The only gameplay difference is the question logic.
 
 A number appears on the scoreboard above the goal.
 
+**Approved display update:** show up to two preceding positive numbers as context,
+ending at the question's starting number and followed by an ellipsis. Examples:
+`1, 2, 3…`, `10, 11, 12…`, `96, 97, 98…`. At the lower bound, use `1…` or
+`1, 2…`; do not introduce zero or negative numbers. The answer remains the successor
+of the final displayed number, not the length of this contextual sequence.
+
 The player must identify the number that comes immediately after it.
 
 Example:
@@ -37,6 +43,11 @@ Correct answer: 13
 When the child kicks the correct football, play the existing successful goal animation and feedback.
 
 Then update the scoreboard to show the correct successor, matching the reference concept, before transitioning to the next question.
+
+At goal contact, asynchronously fade out the sequence and reveal **only the correct
+answer** while the existing goal/feedback animation continues. Keep this answer
+visible until the next question or phase-exit clears the board. A wrong kick leaves
+the sequence unchanged. Do not add a new pause, prompt, or shooting mechanic.
 
 For an incorrect football, use the existing unsuccessful kick and retry behavior.
 
@@ -63,6 +74,12 @@ Therefore:
 Do not show 99 as the starting number because the successor would be 100, outside the supported range.
 
 ## 3. Tutorial
+
+**Implemented tutorial override approved in chat:** preserve the existing animated
+10 → 11 lesson, choices 9/11/13, 1–11 comic montage, guided finger and super kick.
+It is separate from the 100 questions below and keeps its existing completion key.
+The simple 2 → 3 example below is the original design reference, not a request to
+replace the approved tutorial. Its final Let's Go now starts this mode's first phase.
 
 Follow the existing Kick & Count tutorial implementation pattern and flow.
 
@@ -346,6 +363,10 @@ Reuse the existing football game scene.
 For this mode:
 
 - Display a single number on the main goal scoreboard.
+- Apply the approved contextual sequence above during questions; at successful goal
+  contact replace it with the single correct successor during existing feedback.
+- The top-left panel shows only **What Comes Next?**, and the brief field instruction
+  is **Look. Next. Kick!**. Counting retains **Count & Kick** / **Count. Choose. Kick!**.
 - Do not display a collection of football icons on the scoreboard as Kick & Count does.
 - Show 3–6 footballs containing numeric choices.
 - Keep two-digit numerals legible and centered.
