@@ -38,7 +38,7 @@
   let introPlaying = false;
   let tutorialPending = false;
   let phase = "staging";
-  const display = { count: 4, width: 420, variant: "count", number: null };
+  const display = { count: 4, width: 420, variant: "count", number: null, direction: "next" };
 
   const paused = () => userPaused || document.hidden || !landscape.matches;
   const transformFor = ({ x, y, zoom }) =>
@@ -101,6 +101,7 @@
     if (options.width !== undefined) display.width = Math.max(300, Math.min(620, Number(options.width) || 420));
     if (["count", "message", "celebrate", "number", "sequence"].includes(options.variant)) display.variant = options.variant;
     if (options.number !== undefined) display.number = options.number === null ? null : Math.max(0, Math.min(100, Math.round(Number(options.number) || 0)));
+    if (["next", "before"].includes(options.direction)) display.direction = options.direction;
     const { count, width, variant } = display;
     const columns = Math.max(1, Math.floor((width - 70) / 55));
     const rows = Math.ceil(count / columns);
@@ -117,11 +118,13 @@
         content += `<image class="panel-ball" style="--ball-index:${index}" href="assets/objects/cartoon-football.svg" x="${x}" y="${61 + row * rowPitch}" width="${ballSize}" height="${ballSize}"/>`;
       }
     } else if (variant === "sequence") {
-      const number = Math.max(1, Math.min(98, display.number || 1));
-      const values = Array.from({ length: Math.min(3, number) }, (_, i) => number - Math.min(2, number - 1) + i);
+      const before = display.direction === "before";
+      const number = Math.max(before ? 2 : 1, Math.min(before ? 99 : 98, display.number || 1));
+      const length = Math.min(3, before ? 100 - number : number);
+      const values = Array.from({ length }, (_, i) => before ? number + length - 1 - i : number - length + 1 + i);
       // A single naturally measured text run centers the whole sequence, not
       // individual columns stretched across the board (especially "1 …").
-      content = `<text x="${width / 2}" y="116" font-size="${number > 9 ? 64 : 76}" font-weight="700">`
+      content = `<text x="${width / 2}" y="116" font-size="${Math.max(...values) > 9 ? 64 : 76}" font-weight="700">`
         + values.map((value, i) => `<tspan fill="${value === number ? '#fff2ab' : '#c5d9ef'}">${value}${i < values.length - 1 ? ', ' : ''}</tspan>`).join('')
         + `<tspan dx="10" font-size="52" fill="#fff2ab">…</tspan></text>`;
     } else if (variant === "number") {
@@ -136,7 +139,11 @@
     panel.style.left = `${682.5 - width / 2}px`;
     panel.setAttribute("aria-label", variant === "count" ? `${count} football${count === 1 ? "" : "s"} on the quantity display` : variant === "message" ? "Ready to kick?" : "Goal celebration display");
     if (variant === "number") panel.setAttribute("aria-label", display.number === null ? "Empty number display" : `Number ${display.number}`);
-    if (variant === "sequence") panel.setAttribute("aria-label", `${Array.from({ length: Math.min(3, display.number) }, (_, i) => display.number - Math.min(2, display.number - 1) + i).join(', ')}, what comes next?`);
+    if (variant === "sequence") {
+      const before = display.direction === "before", number = Math.max(before ? 2 : 1, Math.min(before ? 99 : 98, display.number || 1));
+      const length = Math.min(3, before ? 100 - number : number);
+      panel.setAttribute("aria-label", `${Array.from({ length }, (_, i) => before ? number + length - 1 - i : number - length + 1 + i).join(', ')}, what ${before ? 'came before' : 'comes next'}?`);
+    }
     panel.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
       <defs>
         <linearGradient id="board-rim" x2="0" y2="1"><stop stop-color="#eefcff"/><stop offset=".5" stop-color="#74a5c2"/><stop offset="1" stop-color="#d7eeef"/></linearGradient>
@@ -323,7 +330,7 @@
       let tutorialSeen = false;
       try { tutorialSeen = localStorage.getItem("sparky.tutorial.completed.v1") === "true"; } catch { /* Session-only. */ }
       const playDirect = mode === "game" || (!mode && window.SparkyIntro.seen && tutorialSeen);
-      const showIntro = !preview && !playDirect && !["tutorial", "next-tutorial"].includes(mode);
+      const showIntro = !preview && !playDirect && !["tutorial", "next-tutorial", "before-tutorial"].includes(mode);
       if (!preview && !playDirect) await window.SparkyTutorial.preload();
       if (!preview) await window.SparkyGame.preload();
       active = true;
@@ -352,11 +359,16 @@
         tutorialPending = true;
         root.classList.remove("intro-running");
         root.classList.add("tutorial-pending");
-        status.textContent = mode === "next-tutorial" ? "Ready for What Comes Next?" : "Ready for Sparky’s counting warm-up.";
+        status.textContent = mode === "before-tutorial" ? "Ready for What Came Before?" : mode === "next-tutorial" ? "Ready for What Comes Next?" : "Ready for Sparky’s counting warm-up.";
         root.dispatchEvent(new CustomEvent("sparky:tutorial-ready", { bubbles: true }));
         if (mode !== "intro") {
           tutorialPending = false;
-          if (mode === "next-tutorial") {
+          if (mode === "before-tutorial") {
+            const completed = await window.SparkyBeforeTutorial.startTutorial({ preview: true });
+            // Isolated creative preview: no predecessor questions exist yet,
+            // and developer review must not create/advance gameplay saves.
+            if (completed !== false) location.replace(location.pathname);
+          } else if (mode === "next-tutorial") {
             await window.SparkyNextTutorial.startTutorial({ preview: true });
             await startMainGame(); await window.SparkyGame.start({ quickIntro: false });
           } else await window.SparkyTutorial.play();
@@ -417,5 +429,5 @@
     enter, preload, setShot, setDisplay, setPaused, spawnBalls, startMainGame,
     get state() { return { active, phase, shot, paused: paused(), display: { ...display }, ballCount, ballsEntering: Boolean(ballEntrancePromise), introPlaying, tutorialPending }; }
   });
-  if (["game", "intro", "tutorial", "next-tutorial", "lab"].includes(new URLSearchParams(location.search).get("scene"))) enter();
+  if (["game", "intro", "tutorial", "next-tutorial", "before-tutorial", "lab"].includes(new URLSearchParams(location.search).get("scene"))) enter();
 })();

@@ -46,9 +46,35 @@
   const sheets = new Set(["spin", "up", "down", "kick", "cheer"]);
   const images = new Map(), buffers = new Map(), videos = new Map(), sources = new Set();
   const nextKey = "sparky.tutorial.what-comes-next.completed.v1";
+  const beforeKey = "sparky.tutorial.what-came-before.completed.v1";
+  const lessons = {
+    counting: { answer: 2, choices: [1, 2, 3], hint: "Count 2 footballs above. Tap the ball with 2!" },
+    next: { answer: 11, choices: [9, 11, 13], hint: "What comes after 10? Tap 11!" },
+    before: { answer: 8, choices: [8, 10, 11], hint: "What comes before 9? Tap 8!" }
+  };
   const nextNames = ["counting-karte-karte-bore-to-nahi-ho-gaye", "display-maharaj-number-prakat-karo", "hehe-nice", "ab-balls-prakat-ki-jaen", "ab-upar-dekho-10-dikh-raha-hai-(asks)", "par-yar-10-number-ki-to-koi-ball-hai-hi-nahi-yahan", "sigh-ab-kick-kisko-karenge", "ek-idea-doon", "aajao-mere-sath-karo-count", "ab-pehla-nishana-mera", "badhiya-ab-aese-hi-next-number-wale-balls-tumhe-kick-krne-hain"];
   const countWords = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven"];
   let nextPrepared, nextCompleted = false;
+  let beforePrepared, beforeCompleted = false;
+  async function preloadBefore() {
+    await preloadNext();
+    if (!beforePrepared) beforePrepared = (async () => {
+      const lesson = window.SparkyBeforeLesson;
+      if (!lesson) throw new Error("Load the predecessor lesson before its tutorial host");
+      await Promise.all([
+        ...Object.entries(lesson.poses).map(async ([key, path]) => {
+          if (images.has(key)) return;
+          const image = new Image(); image.src = path; await image.decode(); images.set(key, image);
+        }),
+        ...Object.entries(lesson.clips).map(async ([key, path]) => {
+          if (!context || buffers.has(key)) return;
+          const response = await fetch(path); if (!response.ok) throw new Error(`Before tutorial audio: ${path}`);
+          buffers.set(key, await context.decodeAudioData(await response.arrayBuffer()));
+        })
+      ]);
+    })().catch(error => { beforePrepared = null; throw error; });
+    return beforePrepared;
+  }
   async function preloadNext() {
     await preload();
     if (!nextPrepared) nextPrepared = (async () => {
@@ -71,8 +97,8 @@
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
   const landscape = matchMedia("(orientation: landscape)");
   const query = new URLSearchParams(location.search);
-  const speed = ["tutorial", "next-tutorial"].includes(query.get("scene")) ? Math.max(1, Math.min(8, Number(query.get("tutorialSpeed")) || 1)) : 1;
-  let context, master, musicGain, prepared, run, playing;
+  const speed = ["tutorial", "next-tutorial", "before-tutorial"].includes(query.get("scene")) ? Math.max(1, Math.min(8, Number(query.get("tutorialSpeed")) || 1)) : 1;
+  let context, master, musicGain, prepared, run, playing, playGeneration = 0;
 
   function engine() {
     const Constructor = window.AudioContext || window.webkitAudioContext;
@@ -134,9 +160,13 @@
     assertActive();
     // One soundtrack owner: Lava Chicken replaces, rather than layers over,
     // the opening music and stays on the same pause/ducking bus as dialogue.
-    run.music?.stop();
+    stopMusic();
+    if (musicGain) musicGain.gain.setTargetAtTime(run.actor.classList.contains("is-speaking") ? .055 : .09, context.currentTime, .1);
     run.music = sound(key, { loop: true, music: true, volume: 1 });
     run.musicTrack = key;
+  }
+  function stopMusic() {
+    assertActive(); run.music?.stop(); run.music = null; run.musicTrack = null;
   }
   function assertActive(state = run) { if (!state || state !== run || state.stopped) throw new DOMException("Tutorial stopped", "AbortError"); }
   async function wait(ms) {
@@ -226,14 +256,15 @@
     const cinemaLayer = ui.querySelector(".tutorial-cinema");
     root.prepend(cinemaLayer); root.append(ui);
     // Keep caption strings available offscreen without mounting a bottom text panel.
-    if (variant === "next") {
-      ui.setAttribute("aria-label", "Guided What Comes Next tutorial");
-      ui.querySelector(".tutorial-progress b").textContent = "What Comes Next?";
+    if (variant !== "counting") {
+      const title = variant === "before" ? "What Came Before?" : "What Comes Next?";
+      ui.setAttribute("aria-label", `Guided ${title} tutorial`);
+      ui.querySelector(".tutorial-progress b").textContent = title;
     }
     const state = { variant, actor, ui, cinema: cinemaLayer, stage: ui.querySelector(".tutorial-stage"), caption: document.createElement("div"), video: cinemaLayer.querySelector("video"),
       time: 0, last: 0, waits: new Set(), animations: new Set(), paused: false, stopped: false, gate: false, beat: "preparing", history: [], selected: null, raf: 0, releases: new Set() };
     state.video.muted = true;
-    if (variant === "next") {
+    if (variant !== "counting") {
       state.nextVideos = new Map();
       for (const name of ["comic-multi-shapes-bg", "comic-book-speed-line-blue", "comic-intro-bg"]) {
         const video = document.createElement("video"); video.muted = true; video.playsInline = true; video.loop = true; video.preload = "auto";
@@ -248,7 +279,7 @@
     };
     */
     const messi = ui.querySelector(".tutorial-messi");
-    messi.hidden = variant === "next";
+    messi.hidden = variant !== "counting";
     for (const key of ["messi", "messiAngry"]) {
       const image = images.get(key); image.className = "tutorial-messi-pose";
       image.classList.toggle("is-current", key === "messi"); image.alt = ""; messi.append(image);
@@ -285,14 +316,15 @@
   }
   async function choose() {
     beat("await-choice"); root.classList.add("tutorial-choosing");
-    run.caption.textContent = run.variant === "next" ? "What comes after 10? Tap 11!" : "Count 2 footballs above. Tap the ball with 2!";
+    const lesson = lessons[run.variant];
+    run.caption.textContent = lesson.hint;
     const balls = [...zone.querySelectorAll(".choice-ball")];
     let reacting = false;
     run.wrongAttempts = 0;
     await new Promise(resolve => {
       for (const [index, ball] of balls.entries()) {
-        const value = run.variant === "next" ? [9, 11, 13][index] : index + 1;
-        const answer = run.variant === "next" ? 11 : 2;
+        const value = lesson.choices[index];
+        const answer = lesson.answer;
         ball.setAttribute("role", "button"); ball.tabIndex = 0; ball.setAttribute("aria-label", `Kick ball ${value}`); ball.setAttribute("aria-disabled", "false");
         const select = async () => {
           if (run.paused || run.selected || reacting) return;
@@ -302,7 +334,7 @@
             const previousPose = run.actor.dataset.pose;
             pose("thinking");
             try {
-              const hint = run.variant === "next" ? "What comes after 10? Try 11!" : key === "wrong" ? "Count the two footballs above." : "Try the ball with 2.";
+              const hint = lesson.hint;
               await say(key, `${key === "wrong" ? "Wo wala nahi!" : "Wo bhi nahi!"} ${hint}`, () => Promise.all([
                 animate(ball, [{ transform: "translateX(0)" }, { transform: "translateX(-8px)", offset: .25 }, { transform: "translateX(8px)", offset: .6 }, { transform: "translateX(0)" }], 300),
                 (async () => { await wait(1000); pose(previousPose); })()
@@ -322,7 +354,7 @@
         ball.onclick = select;
         ball.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); select(); } };
       }
-      balls[1].focus({ preventScroll: true });
+      balls[lesson.choices.indexOf(lesson.answer)].focus({ preventScroll: true });
       run.releases.add(resolve);
     });
     assertActive();
@@ -417,18 +449,7 @@
     await numberMontage();
     const hint = document.createElement("p"); hint.className = "next-field-hint"; hint.textContent = "Look · Next · Kick"; run.stage.append(hint);
     pose("down"); await choose(); hint.remove();
-    pose("self");
-    await say("ab-pehla-nishana-mera", "This first shot is mine!", () => Promise.all([...zone.children].filter(ball => ball !== run.selected).map((ball, i) => animate(ball, [{ opacity: 1, transform: "translate(0,0)" }, { opacity: 0, transform: `translate(${i ? 850 : -650}px,100px) rotate(180deg)` }], 650))));
-    await animate(run.actor, [{ transform: "translateX(0)" }, { transform: "translateX(300px)" }], 700);
-    await cinema("speed"); pose("kick"); run.actor.classList.add("is-kicking");
-    await say("super", "Super kick!", async () => {
-      await wait((buffers.get("super")?.duration || 1.5) * 450); run.actor.classList.add("kick-contact"); sound("hit", { volume: .45 });
-      await animate(run.selected.querySelector(".choice-ball-body"), [{ transform: "translate(0,0) scale(1)" }, { transform: "translate(0,-260px) rotate(-430deg) scale(.7)", offset: .65 }, { transform: "translate(0,-295px) rotate(-680deg) scale(.27)", opacity: .2 }], 850, { easing: "ease-in" });
-      run.selected.style.opacity = "0";
-      await animate(document.querySelector(".goal-zone"), [{ transform: "scale(1)" }, { transform: "scale(1.05,.97)", offset: .3 }, { transform: "scale(1)" }], 400);
-    });
-    run.actor.classList.remove("is-kicking", "kick-contact"); pose("cheer"); sound("cheers", { volume: .35 }); confetti();
-    await Promise.all([say("goal", "Goal!"), comic("GOOOAL!<small>10 → 11</small>")]); await hideComic();
+    await tutorialGoal({ myKick: "ab-pehla-nishana-mera", answer: 11, goalLabel: "10 → 11" });
     root.classList.add("tutorial-finale"); await cinema("reveal");
     await animate(run.actor, [{ transform: "translateX(300px)" }, { transform: "translate(70px,-25px) scale(1.18)" }], 550);
     pose("victory"); await Promise.all([say(nextNames[10], "Now kick the ball with the next number!"), comic("LOOK.<br>NEXT.<br><em>KICK!</em>")]);
@@ -441,9 +462,101 @@
     document.getElementById("scene-pause").focus({ preventScroll: true });
     root.dispatchEvent(new CustomEvent("sparky:next-tutorial-complete", { bubbles: true, detail: { answer: 11, choices: [9, 11, 13] } }));
   }
-  async function nextFinale() {
+  async function tutorialGoal({ myKick, boardAnswer, goalLabel }) {
+    pose("self");
+    await say(myKick, "This first shot is mine!", () => Promise.all([
+      ...[...zone.children].filter(ball => ball !== run.selected).map((ball, i) => animate(ball, [{ opacity: 1, transform: "translate(0,0)" }, { opacity: 0, transform: `translate(${i ? 850 : -650}px,100px) rotate(180deg)` }], 650)),
+      (async () => {
+        // The shared coach kick/goal flight uses the centre slot. Successor's
+        // answer already lives there; predecessor's left-hand 8 must roll in.
+        const selected = run.selected;
+        const target = 682.5 - zone.offsetLeft - selected.offsetWidth / 2;
+        const dx = target - selected.offsetLeft;
+        if (Math.abs(dx) < .5) return;
+        await Promise.all([
+          animate(selected, [{ transform: "translateX(0)" }, { transform: `translateX(${dx}px)` }], 650),
+          // Rotate only the centred artwork, not the bottom-anchored body:
+          // rotating that body swings the whole ball below the pitch edge.
+          animate(selected.querySelector(".choice-ball-body img"), [{ transform: "rotate(0deg)" }, { transform: `rotate(${dx / (selected.offsetWidth / 2) * 180 / Math.PI}deg)` }], 650)
+        ]);
+        selected.style.left = `${target}px`; selected.style.transform = "none";
+        selected.querySelector(".choice-ball-body").style.transform = "none";
+        selected.querySelector(".choice-ball-body img").style.transform = "none";
+      })()
+    ]));
+    await animate(run.actor, [{ transform: "translateX(0)" }, { transform: "translateX(300px)" }], 700);
+    await cinema("speed"); pose("kick"); run.actor.classList.add("is-kicking");
+    await say("super", "Super kick!", async () => {
+      await wait((buffers.get("super")?.duration || 1.5) * 450); run.actor.classList.add("kick-contact"); sound("hit", { volume: .45 });
+      await animate(run.selected.querySelector(".choice-ball-body"), [{ transform: "translate(0,0) scale(1)" }, { transform: "translate(0,-260px) rotate(-430deg) scale(.7)", offset: .65 }, { transform: "translate(0,-295px) rotate(-680deg) scale(.27)", opacity: .2 }], 850, { easing: "ease-in" });
+      run.selected.style.opacity = "0";
+      if (boardAnswer !== undefined) window.SparkyScene.setDisplay({ variant: "number", number: boardAnswer });
+      await animate(document.querySelector(".goal-zone"), [{ transform: "scale(1)" }, { transform: "scale(1.05,.97)", offset: .3 }, { transform: "scale(1)" }], 400);
+    });
+    run.actor.classList.remove("is-kicking", "kick-contact"); pose("cheer"); sound("cheers", { volume: .35 }); confetti();
+    await Promise.all([say("goal", "Goal!"), comic(`GOOOAL!<small>${goalLabel}</small>`)]); await hideComic();
+  }
+  async function beforeStory() {
+    const state = run;
+    async function transitionCoach(change, { movie, field = false, shot } = {}) {
+      assertActive(state);
+      const from = state.actor.getBoundingClientRect();
+      const wasComic = root.classList.contains("tutorial-cinematic");
+      // Prepare the destination camera while the comic is still opaque. Never
+      // reveal a wide field and then issue a second close-up camera move.
+      if (shot) await window.SparkyScene.setShot(shot, { instant: true });
+      assertActive(state);
+      change();
+      state.actor.style.transform = "none";
+      state.actor.style.transformOrigin = "0 0";
+      const to = state.actor.getBoundingClientRect();
+      const scale = Math.min(innerWidth / 1365, innerHeight / 768);
+      const cameraScale = state.actor.parentNode === camera ? (shot === "close" ? 1.8 : 1) : 1;
+      const unit = scale * cameraScale;
+      if (movie) {
+        state.montageMovie = state.nextVideos?.has(movie) ? movie : null;
+        if (!state.montageMovie) { state.video.src = videos.get(movie); state.video.load(); }
+      }
+      state.cinema.style.opacity = wasComic ? "1" : "0";
+      root.classList.add("before-transition");
+      sync();
+      const props = [document.querySelector(".field-world"), board, zone, document.querySelector(".goal-zone")];
+      try {
+        await Promise.all([
+          animate(state.actor, [
+            { transform: `translate(${(from.left - to.left) / unit}px,${(from.top - to.top) / unit}px) scale(${from.width / to.width},${from.height / to.height})` },
+            { transform: "none" }
+          ], 550),
+          animate(state.cinema, [{ opacity: wasComic ? 1 : 0 }, { opacity: field ? 0 : 1 }], 550),
+          ...props.map(node => animate(node, [{ opacity: wasComic ? 0 : 1 }, { opacity: field ? 1 : 0 }], 550))
+        ]);
+      } finally {
+        if (run === state && !state.stopped) {
+          root.classList.remove("before-transition");
+          state.actor.style.removeProperty("transform-origin");
+          for (const node of props) node.style.removeProperty("opacity");
+        }
+      }
+    }
+    const api = {
+      get state() { return run; }, root, camera, board, zone, scene: window.SparkyScene,
+      pose, beat, say, wait, animate, cinema, comic, hideComic, confetti, choose,
+      sound, startMusic, stopMusic, sync, assertActive,
+      duration: key => (buffers.get(key)?.duration || 2.6) * 1000,
+      transitionCoach,
+      goal: tutorialGoal,
+      finale: async options => { root.classList.add("tutorial-finale"); await nextFinale(options); }
+    };
+    await window.SparkyBeforeLesson.story(api);
+    assertActive(state); beat("before-complete"); completeBeforeTutorial(); beat("complete");
+    cleanup(); document.getElementById("scene-pause").focus({ preventScroll: true });
+    root.dispatchEvent(new CustomEvent("sparky:before-tutorial-complete", { bubbles: true, detail: { answer: 8, choices: [8, 10, 11], preview: state.preview } }));
+  }
+  async function nextFinale({ label = "Let’s Go!" } = {}) {
     const cta = run.ui.querySelector(".tutorial-lets-go");
     const ball = run.ui.querySelector(".tutorial-finale-ball");
+    cta.querySelector("span").textContent = label;
+    cta.setAttribute("aria-label", `Kick the ${label} football`);
     pose("summon"); beat("await-lets-go");
     run.caption.textContent = "Tap the football — let’s go!";
     cta.hidden = false;
@@ -650,7 +763,13 @@
     await finale();
   }
   function cleanup() {
+    // Stop also invalidates a first start still awaiting fetch/decode. Warming
+    // caches may finish, but an old request must never mount over a newer run.
+    ++playGeneration; playing = null;
     if (!run) return; run.stopped = true; cancelAnimationFrame(run.raf);
+    if (root.classList.contains("before-transition")) {
+      for (const node of [document.querySelector(".field-world"), board, zone, document.querySelector(".goal-zone")]) node.style.removeProperty("opacity");
+    }
     for (const release of run.releases) release();
     for (const task of run.waits) task.resolve();
     for (const animation of run.animations) animation.cancel();
@@ -658,7 +777,7 @@
     for (const source of [...sources]) { try { source.stop(); } catch { /* Ended. */ } }
     run.video.pause(); run.actor.remove(); run.ui.remove(); run.cinema.remove(); run.wipe?.remove(); zone.replaceChildren(); zone.inert = false;
     for (const video of run.nextVideos?.values() || []) { video.pause(); video.removeAttribute("src"); video.load(); }
-    root.classList.remove("tutorial-running", "tutorial-board-visible", "tutorial-balls-visible", "tutorial-cinematic", "tutorial-finale", "tutorial-choosing", "tutorial-handoff", "tutorial-paused", "next-tutorial-running", "next-montage-running");
+    root.classList.remove("tutorial-running", "tutorial-board-visible", "tutorial-balls-visible", "tutorial-cinematic", "tutorial-finale", "tutorial-choosing", "tutorial-handoff", "tutorial-paused", "next-tutorial-running", "next-montage-running", "before-tutorial-running", "before-transition");
     playing = null;
   }
   function completeNextTutorial() {
@@ -667,29 +786,47 @@
     try { localStorage.setItem(nextKey, "true"); } catch { /* Session fallback. */ }
     return true;
   }
+  function completeBeforeTutorial() {
+    if (!run || run.stopped || run.variant !== "before" || run.preview || run.beat !== "before-complete" || run.selected?.dataset.number !== "8") return false;
+    beforeCompleted = true;
+    try { localStorage.setItem(beforeKey, "true"); } catch { /* Session fallback. */ }
+    return true;
+  }
   function play({ variant = "counting", preview = false } = {}) {
     if (playing) return playing;
+    const generation = ++playGeneration;
     playing = (async () => {
-      if (variant === "next") await preloadNext(); else await preload();
+      if (variant === "before") await preloadBefore(); else if (variant === "next") await preloadNext(); else await preload();
+      if (generation !== playGeneration) throw new DOMException("Tutorial stopped during preload", "AbortError");
       root.classList.remove("tutorial-pending"); root.classList.add("tutorial-running");
       root.classList.remove("main-game-ready");
       // Restore field props if the tutorial is explicitly started again.
       for (const element of [board, document.querySelector(".goal-zone")]) {
         element.style.opacity = "1"; element.style.transform = "none";
       }
-      zone.setAttribute("aria-label", variant === "next" ? "Choose what comes after 10" : "Choose the football with the matching number");
+      zone.setAttribute("aria-label", lessons[variant].hint);
       window.SparkyScene.setDisplay({ count: 2, width: 420, variant: "count" });
       await window.SparkyScene.setShot("wide", { instant: true });
+      if (generation !== playGeneration) throw new DOMException("Tutorial stopped before mounting", "AbortError");
       run = build(variant); run.preview = preview;
-      root.classList.toggle("next-tutorial-running", variant === "next"); sync();
+      // Mount a decoded visible pose before the audio gate or camera can wait.
+      if (variant === "before") pose("beforeYawn");
+      root.classList.toggle("next-tutorial-running", variant === "next");
+      root.classList.toggle("before-tutorial-running", variant === "before"); sync();
       if (context && context.state !== "running") {
         run.gate = true; sync(); const gate = run.ui.querySelector(".tutorial-sound-gate"); gate.hidden = false;
-        await new Promise(resolve => { gate.querySelector("button").onclick = async () => { await unlock(); if (context.state === "running") resolve(); }; });
+        const state = run;
+        await new Promise(resolve => {
+          state.releases.add(resolve);
+          gate.querySelector("button").onclick = async () => { await unlock(); if (context.state === "running") resolve(); };
+        });
+        assertActive(state);
         gate.hidden = true; run.gate = false; sync();
       }
-      startMusic("music");
-      if (variant === "next") await nextStory(); else await story();
+      if (variant !== "before") startMusic("music");
+      if (variant === "before") await beforeStory(); else if (variant === "next") await nextStory(); else await story();
     })().catch(error => {
+      if (generation !== playGeneration) return false;
       playing = null;
       if (error.name === "AbortError") return false;
       console.error("Tutorial failed:", error);
@@ -708,6 +845,13 @@
     completeTutorial: completeNextTutorial,
     hasCompletedTutorial() { try { return nextCompleted || localStorage.getItem(nextKey) === "true"; } catch { return nextCompleted; } },
     get state() { return { active: Boolean(run && !run.stopped && run.variant === "next"), beat: run?.variant === "next" ? run.beat : "idle", paused: run?.paused || false, musicTrack: run?.variant === "next" ? run.musicTrack || null : null, history: run?.variant === "next" ? [...run.history] : [], answer: 11, choices: [9, 11, 13] }; }
+  });
+  window.SparkyBeforeTutorial = Object.freeze({ preload: preloadBefore, unlock, sync,
+    startTutorial: options => play({ ...options, variant: "before" }), stop: cleanup,
+    completeTutorial: completeBeforeTutorial,
+    hasCompletedTutorial() { try { return beforeCompleted || localStorage.getItem(beforeKey) === "true"; } catch { return beforeCompleted; } },
+    get state() { return { active: Boolean(run && !run.stopped && run.variant === "before"), beat: run?.variant === "before" ? run.beat : "idle", paused: run?.paused || false,
+      musicTrack: run?.variant === "before" ? run.musicTrack || null : null, history: run?.variant === "before" ? [...run.history] : [], answer: 8, choices: [8, 10, 11] }; }
   });
   document.addEventListener("visibilitychange", sync); window.addEventListener("resize", sync); landscape.addEventListener("change", sync);
 })();

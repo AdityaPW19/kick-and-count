@@ -8,8 +8,10 @@ const vm = require('node:vm');
 const M = require('../game/progression/master.js');
 const C = require('../game/progression/engine.js');
 const N = require('../game/progression/next-engine.js');
+const B = require('../game/progression/before-engine.js');
 const COUNT = 'kick_and_count';
 const NEXT = 'what_comes_next';
+const BEFORE = 'what_came_before';
 
 function memoryStorage() {
   const data = new Map();
@@ -19,9 +21,9 @@ function memoryStorage() {
   };
 }
 function create(options = {}) { return M.createController({ storage: null, random: () => 0.2, ...options }); }
-function input(counting, next, flags = {}) {
-  return { counting: counting?.state, next: next?.state,
-    countingTutorialCompleted: true, nextTutorialCompleted: true, ...flags };
+function input(counting, next, flags = {}, before) {
+  return { counting: counting?.state, next: next?.state, before: before?.state,
+    countingTutorialCompleted: true, nextTutorialCompleted: true, beforeTutorialCompleted: true, ...flags };
 }
 function solve(engine) {
   assert.equal(engine.attempt(engine.currentQuestion().correctAnswer).correct, true);
@@ -47,29 +49,34 @@ function finish(controller, engine, modeId) {
   assert.equal(controller.completeBreak(pending.id), true);
   return pending;
 }
-function onboarding(controller, counting, next) {
-  controller.reconcile(input(counting, next));
+function onboarding(controller, counting, next, before = B.createEngine({ storage: null })) {
+  controller.reconcile(input(counting, next, {}, before));
   for (let i = 0; i < 2; i += 1) { phase(counting); finish(controller, counting, COUNT); }
   controller.reconcile(input(counting, next));
   for (let i = 0; i < 2; i += 1) { phase(next); finish(controller, next, NEXT); }
-  controller.reconcile(input(counting, next));
+  controller.reconcile(input(counting, next, {}, before));
+  for (let i = 0; i < 2; i += 1) { phase(before); finish(controller, before, BEFORE); }
+  controller.reconcile(input(counting, next, {}, before));
 }
 function engines(storage = null) {
   return [C.createEngine({ storage, random: C.seededRandom(34) }),
-    N.createEngine({ storage, random: N.seededRandom(45) })];
+    N.createEngine({ storage, random: N.seededRandom(45) }),
+    B.createEngine({ storage, random: B.seededRandom(56) })];
 }
 function mixed(options = {}) {
   const controller = create(options);
-  const [counting, next] = engines();
-  onboarding(controller, counting, next);
-  return { controller, counting, next };
+  const [counting, next, before] = engines();
+  onboarding(controller, counting, next, before);
+  return { controller, counting, next, before };
 }
 
-test('browser/CommonJS standalone registry contains exactly six modes, only two playable', () => {
+test('browser/CommonJS standalone registry contains exactly six modes, only three playable', () => {
   assert.deepEqual(M.registry.map(mode => mode.id), [COUNT, NEXT, 'what_came_before',
     'color_match', 'find_missing_number', 'reach_target_score']);
-  assert.deepEqual(M.registry.filter(mode => mode.playable).map(mode => mode.id), [COUNT, NEXT]);
-  assert.throws(() => { M.registry[2].playable = true; }, TypeError);
+  assert.deepEqual(M.registry.filter(mode => mode.playable).map(mode => mode.id), [COUNT, NEXT, BEFORE]);
+  assert.throws(() => { M.registry[3].playable = true; }, TypeError);
+  assert.equal(M.VERSION, 2);
+  assert.equal(create().state.version, 2);
   const context = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../game/progression/master.js'), 'utf8'), context);
   assert.equal(typeof context.SparkyMasterProgression.createController, 'function');
@@ -78,32 +85,40 @@ test('browser/CommonJS standalone registry contains exactly six modes, only two 
   assert.equal(context.SparkyMasterProgression.createController().state.activeModeId, COUNT);
 });
 
-test('first visit: counting tutorial, two phases/breaks, next tutorial once, then available rotation', () => {
+test('first visit: counting, next and before tutorials and two phases each, then available rotation', () => {
   const storage = memoryStorage();
-  const [counting, next] = engines(storage);
+  const [counting, next, before] = engines(storage);
+  const firstInput = flags => input(counting, next, { beforeTutorialCompleted: false, ...flags }, before);
   let controller = create({ storage });
   assert.equal(controller.reconcile().tutorialNeeded, true);
   assert.equal(controller.state.activeModeId, COUNT);
-  assert.equal(controller.reconcile(input(counting, next, { nextTutorialCompleted: false })).tutorialNeeded, false);
+  assert.equal(controller.reconcile(firstInput({ nextTutorialCompleted: false })).tutorialNeeded, false);
   phase(counting);
   assert.equal(counting.state.completedFixedQuestions, 4);
   assert.equal(finish(controller, counting, COUNT).nextAction, 'continue_mode');
   phase(counting);
   assert.equal(counting.state.completedFixedQuestions, 9);
-  assert.equal(controller.reconcile(input(counting, next, { nextTutorialCompleted: false })).modeId, COUNT);
+  assert.equal(controller.reconcile(firstInput({ nextTutorialCompleted: false })).modeId, COUNT);
   assert.equal(controller.state.masterState, 'SPARKY_INTERACTION');
   const pending = plan(controller, counting, COUNT);
   assert.equal(pending.nextModeId, NEXT);
   assert.equal(pending.nextAction, 'start_tutorial');
-  assert.equal(controller.reconcile(input(counting, next)).tutorialNeeded, false);
+  assert.equal(controller.reconcile(firstInput()).tutorialNeeded, false);
   ack(counting, pending);
   controller.completeBreak(pending.id);
   // The true next flag above arrived during the pending break and is sticky.
-  assert.equal(controller.reconcile(input(counting, next, { nextTutorialCompleted: false })).tutorialNeeded, false);
+  assert.equal(controller.reconcile(firstInput({ nextTutorialCompleted: false })).tutorialNeeded, false);
   controller = create({ storage });
   assert.equal(controller.reconcile().tutorialNeeded, false);
   assert.equal(controller.state.activeModeId, NEXT);
   for (let i = 0; i < 2; i += 1) { phase(next); finish(controller, next, NEXT); }
+  assert.equal(controller.state.activeModeId, BEFORE);
+  assert.equal(controller.state.stage, 'onboarding');
+  assert.equal(controller.reconcile(input(counting, next, { beforeTutorialCompleted: false }, before)).tutorialNeeded, true);
+  assert.deepEqual(controller.state.run, { phaseQuota: 2, completedPhases: 0 });
+  controller.reconcile(input(counting, next, {}, before));
+  for (let i = 0; i < 2; i += 1) { phase(before); finish(controller, before, BEFORE); }
+  assert.equal(before.state.completedFixedQuestions, 10);
   assert.equal(controller.state.stage, 'available_rotation');
   assert.equal(controller.state.activeModeId, COUNT);
   assert.equal(controller.state.availableOnboardingComplete, true);
@@ -160,10 +175,11 @@ test('legacy engine phase-2 pending prevents premature counting tutorial switch 
   assert.equal(controller.reconcile(input(counting, next)).stage, 'onboarding');
   assert.equal(controller.state.activeModeId, NEXT);
   controller.completeBreak(pending.id);
-  assert.equal(controller.state.stage, 'available_rotation');
+  assert.equal(controller.state.stage, 'onboarding');
+  assert.equal(controller.state.activeModeId, BEFORE);
 });
 
-test('both legacy modes already past opening phases migrate to available, never six-mode completion', () => {
+test('both older engines past opening phases introduce before, never six-mode completion', () => {
   const [counting, next] = engines();
   for (const engine of [counting, next]) {
     for (let i = 0; i < 3; i += 1) { phase(engine); engine.completeInteraction(); }
@@ -171,8 +187,10 @@ test('both legacy modes already past opening phases migrate to available, never 
   const before = [counting.state, next.state];
   const controller = create();
   const result = controller.reconcile(input(counting, next));
-  assert.equal(result.stage, 'available_rotation');
-  assert.equal(result.tutorialNeeded, false);
+  assert.equal(result.stage, 'onboarding');
+  assert.equal(result.modeId, BEFORE);
+  assert.equal(controller.state.availableOnboardingComplete, false);
+  assert.equal(result.tutorialNeeded, false); // Real before tutorial flag is already true.
   assert.equal(controller.state.onboardingComplete, false);
   assert.deepEqual([counting.state, next.state], before);
 });
@@ -214,7 +232,8 @@ test('the final phase-2 question and feedback never route early; commit follows 
   ack(next, nextPending);
   assert.equal(controller.reconcile(input(counting, next)).stage, 'onboarding');
   controller.completeBreak(nextPending.id);
-  assert.equal(controller.state.stage, 'available_rotation');
+  assert.equal(controller.state.stage, 'onboarding');
+  assert.equal(controller.state.activeModeId, BEFORE);
 });
 
 test('onboarding routing uses exact fixed checkpoint AND phase, not absolute or infinite phase IDs', () => {
@@ -335,10 +354,10 @@ test('mixed engine-ack interruption does not consume quota until explicit commit
 
 for (const quota of [1, 2]) {
   test(`mixed runs last exactly ${quota} actual phases, independent of absolute phase IDs`, () => {
-    const { controller, counting, next } = mixed({ twoPhaseProbability: quota === 2 ? 1 : 0 });
+    const { controller, counting, next, before } = mixed({ twoPhaseProbability: quota === 2 ? 1 : 0 });
     for (let run = 0; run < 12; run += 1) {
       const modeId = controller.state.activeModeId;
-      const engine = modeId === COUNT ? counting : next;
+      const engine = { [COUNT]: counting, [NEXT]: next, [BEFORE]: before }[modeId];
       assert.equal(controller.state.run.phaseQuota, quota);
       for (let i = 0; i < quota; i += 1) {
         phase(engine);
@@ -347,9 +366,10 @@ for (const quota of [1, 2]) {
         assert.equal(pending.nextAction, i < quota - 1 ? 'continue_mode' : 'switch_mode');
         ack(engine, pending);
         controller.completeBreak(pending.id);
-        assert.equal(controller.state.activeModeId, i < quota - 1 ? modeId : modeId === COUNT ? NEXT : COUNT);
+        if (i < quota - 1) assert.equal(controller.state.activeModeId, modeId);
+        else assert.notEqual(controller.state.activeModeId, modeId);
       }
-      controller.reconcile(input(counting, next));
+      controller.reconcile(input(counting, next, {}, before));
     }
   });
 }
@@ -364,27 +384,28 @@ test('default quota threshold is 65% two / 35% one, configurable and validated',
   }
 });
 
-test('fair rotation alternates two modes, supports both durations, never selects future modes or repeats tutorials', () => {
-  const { controller, counting, next } = mixed({ random: C.seededRandom(7890) });
+test('fair rotation covers three modes, supports both durations, never selects future modes or repeats tutorials', () => {
+  const { controller, counting, next, before } = mixed({ random: C.seededRandom(7890) });
   let previous = null;
-  const visits = { [COUNT]: 0, [NEXT]: 0 };
+  const visits = { [COUNT]: 0, [NEXT]: 0, [BEFORE]: 0 };
   const quotas = new Set();
   for (let run = 0; run < 120; run += 1) {
     const modeId = controller.state.activeModeId;
-    const engine = modeId === COUNT ? counting : next;
+    const engine = { [COUNT]: counting, [NEXT]: next, [BEFORE]: before }[modeId];
     assert.notEqual(modeId, previous);
     assert.ok(M.registry.find(mode => mode.id === modeId).playable);
     visits[modeId] += 1;
     const quota = controller.state.run.phaseQuota;
     quotas.add(quota);
     for (let i = 0; i < quota; i += 1) { phase(engine); finish(controller, engine, modeId); }
-    assert.equal(controller.reconcile(input(counting, next)).tutorialNeeded, false);
+    assert.equal(controller.reconcile(input(counting, next, {}, before)).tutorialNeeded, false);
     assert.equal(controller.state.availableOnboardingComplete, true);
     assert.equal(controller.state.onboardingComplete, false);
     assert.equal(controller.state.onboardingDeferred, true);
     previous = modeId;
   }
-  assert.equal(visits[COUNT], visits[NEXT]);
+  assert.ok(Math.max(...Object.values(visits)) - Math.min(...Object.values(visits)) <= 2);
+  assert.ok(Object.values(visits).every(value => value >= 39));
   assert.deepEqual([...quotas].sort(), [1, 2]);
 });
 
@@ -513,7 +534,7 @@ test('corrupt pending commit/route is rejected, intact pending survives repeated
   const good = storage.getItem(M.STORAGE_KEY);
   assert.deepEqual(create({ storage }).state, controller.state);
   for (const edit of [
-    s => { s.pendingBreak.commit.activeModeId = 'what_came_before'; },
+    s => { s.pendingBreak.commit.activeModeId = 'color_match'; },
     s => { s.pendingBreak.nextModeId = 'color_match'; },
     s => { s.pendingBreak.nextAction = 'invented'; },
     s => { s.pendingBreak.commit.onboardingComplete = true; },
@@ -566,8 +587,10 @@ test('input validation rejects unavailable modes, invalid checkpoints, phases, s
     const invalid = create({ random: () => value });
     const p = invalid.planBreak({ modeId: COUNT, checkpointId: 'fixed_phase_2', phaseId: 2 });
     invalid.completeBreak(p.id);
+    const next = invalid.planBreak({ modeId: NEXT, checkpointId: 'next_fixed_phase_2', phaseId: 2 });
+    invalid.completeBreak(next.id);
     const before = invalid.state;
-    assert.throws(() => invalid.planBreak({ modeId: NEXT, checkpointId: 'next_fixed_phase_2', phaseId: 2 }), RangeError);
+    assert.throws(() => invalid.planBreak({ modeId: BEFORE, checkpointId: 'before_fixed_phase_2', phaseId: 2 }), RangeError);
     assert.deepEqual(invalid.state, before);
   }
 });

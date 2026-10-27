@@ -99,8 +99,10 @@
     assert(r);
   }
   async function idleLoop(r) {
-    while (live(r)) {
+    const token = r.idleGeneration = (r.idleGeneration || 0) + 1;
+    while (live(r) && token === r.idleGeneration) {
       if (!await owned(r, D().wait(500))) return;
+      if (token !== r.idleGeneration) return;
       controls(r);
       if (!r.answering || r.busy || r.preview || D().state.paused || D().state.time < r.idleAt) continue;
       const voice = D().idle();
@@ -196,7 +198,7 @@
       await modes.counting.render.call(this, { ...q, displayBallCount: 1 }, r);
     },
     restore(q) {
-      scene().setDisplay({ variant: "sequence", number: q.displayedNumber, width: 540 });
+      scene().setDisplay({ variant: "sequence", number: q.displayedNumber, width: 540, direction: "next" });
     },
     async goal(q, r) {
       const board = document.getElementById("quantity-display");
@@ -208,7 +210,21 @@
       ], 180));
     }
   });
-  function progression() { return run?.modeId === "what_comes_next" ? window.SparkyNextProgression : window.SparkyProgression; }
+  modes.what_came_before = Object.freeze({
+    name: "What Came Before?", instruction: "Look. Before. Kick!", choiceLabel: "Choose the number that came before",
+    async render(q, r) {
+      if (!Number.isInteger(q.displayedNumber) || q.displayedNumber < 2 || q.displayedNumber > 99 || q.correctAnswer !== q.displayedNumber - 1) throw new RangeError("Invalid predecessor presentation");
+      await modes.counting.render.call(this, { ...q, displayBallCount: 1 }, r);
+    },
+    restore(q) {
+      scene().setDisplay({ variant: "sequence", number: q.displayedNumber, width: 540, direction: "before" });
+    },
+    goal: modes.what_comes_next.goal
+  });
+  function progression() {
+    return { kick_and_count: window.SparkyProgression, what_comes_next: window.SparkyNextProgression,
+      what_came_before: window.SparkyBeforeProgression }[run?.modeId || "kick_and_count"];
+  }
   function phaseFor(q) { return progression().phases.find(phase => phase.phaseId === q.phaseId) || null; }
   function phaseEnd(q) {
     if (engine.state.mode !== "fixed") return (engine.state.infiniteCompletedSinceInteraction + 1) % 5 === 0;
@@ -364,12 +380,13 @@
       if (saved.lastCompletedInteractionCheckpoint === pending.checkpointId ||
           (pending.checkpointId === "fixed_phase_17" && saved.mode === "infinite")) master.completeBreak(pending.id);
     }
-    const next = master.reconcile({ counting: engines.kick_and_count.state, next: engines.what_comes_next.state,
+    const next = master.reconcile({ counting: engines.kick_and_count.state, next: engines.what_comes_next.state, before: engines.what_came_before.state,
       // Main is reached after counting practice, or through explicit developer entry.
-      countingTutorialCompleted: true, nextTutorialCompleted: window.SparkyNextTutorial.hasCompletedTutorial() });
+      countingTutorialCompleted: true, nextTutorialCompleted: window.SparkyNextTutorial.hasCompletedTutorial(),
+      beforeTutorialCompleted: window.SparkyBeforeTutorial.hasCompletedTutorial() });
     r.modeId = next.modeId;
     engine = engines[r.modeId];
-    r.adapter = r.modeId === "what_comes_next" ? modes.what_comes_next : modes.counting;
+    r.adapter = r.modeId === "kick_and_count" ? modes.counting : modes[r.modeId];
     if (r.label) r.label.querySelector("b").textContent = r.adapter.name;
     if (r.hint) r.hint.textContent = r.adapter.instruction;
     r.zone.setAttribute("aria-label", r.adapter.choiceLabel);
@@ -397,8 +414,8 @@
       r.answering = false; r.busy = true; controls(r);
       const next = route(r);
       const state = engine.state;
-      if (next.tutorialNeeded && r.modeId === "what_comes_next") {
-        await nextTutorial(r);
+      if (next.tutorialNeeded && r.modeId !== "kick_and_count") {
+        await nextTutorial(r, false, r.modeId === "what_came_before" ? "before" : "next");
         continue;
       }
       if (state.status === "interaction") {
@@ -422,21 +439,22 @@
     }
   }
 
-  async function nextTutorial(r, preview = false) {
+  async function nextTutorial(r, preview = false, variant = "next") {
+    const tutorial = variant === "before" ? window.SparkyBeforeTutorial : window.SparkyNextTutorial;
     r.answering = false; r.busy = true; controls(r);
     await quiet(r);
-    await owned(r, window.SparkyNextTutorial.preload());
-    assert(r); r.tutorialActive = true;
+    await owned(r, tutorial.preload());
+    assert(r); r.tutorialActive = tutorial;
     D().dispose();
     r.root.classList.remove("main-game-running", "main-game-busy", "main-game-answering", "main-presentation", "main-question-visible", "main-options-visible");
     r.label.hidden = true; r.panel && (r.panel.hidden = true);
     document.getElementById("game-info").hidden = true;
     document.getElementById("game-tutorial").hidden = true;
     try {
-      await owned(r, window.SparkyNextTutorial.startTutorial({ preview }));
+      await owned(r, tutorial.startTutorial({ preview }));
     } finally {
       if (live(r)) {
-        r.tutorialActive = false;
+        r.tutorialActive = null;
         await owned(r, scene().startMainGame());
         await owned(r, D().mount());
         r.root.classList.add("main-game-running"); r.label.hidden = false;
@@ -453,7 +471,7 @@
   }
 
   async function preload() {
-    if (!scene() || !D() || !window.SparkyProgression || !window.SparkyNextProgression || !window.SparkyMasterProgression) throw new Error("Load scene, mode progression, master controller and director before SparkyGame");
+    if (!scene() || !D() || !window.SparkyProgression || !window.SparkyNextProgression || !window.SparkyBeforeProgression || !window.SparkyMasterProgression) throw new Error("Load scene, mode progression, master controller and director before SparkyGame");
     await Promise.all([scene().preload(), D().preload()]);
   }
   function start({ quickIntro = true } = {}) {
@@ -477,7 +495,8 @@
         // Construct every run: resumes interrupted accepted feedback through the
         // engine's documented recovery rather than committing it in stop().
         engines = { kick_and_count: window.SparkyProgression.createEngine({ storage }),
-          what_comes_next: window.SparkyNextProgression.createEngine({ storage }) };
+          what_comes_next: window.SparkyNextProgression.createEngine({ storage }),
+          what_came_before: window.SparkyBeforeProgression.createEngine({ storage }) };
         master = window.SparkyMasterProgression.createController({ storage });
         for (const [modeId, item] of Object.entries(engines)) {
           r.cleanups.push(item.subscribe(event => {
@@ -542,7 +561,7 @@
     r.stopped = true; r.cancel();
     r.answering = false; r.busy = false; r.resolveChoice?.(); r.resolveChoice = null;
     for (const cleanup of r.cleanups.splice(0)) cleanup();
-    if (r.tutorialActive) window.SparkyNextTutorial.stop();
+    r.tutorialActive?.stop();
     r.panel?.remove(); r.hint?.remove(); r.label?.remove();
     r.root.classList.remove("main-game-running", "main-game-answering", "main-game-busy", "main-question-visible", "main-options-visible", "main-presentation");
     r.zone.inert = false; r.zone.removeAttribute("aria-busy");
@@ -554,8 +573,8 @@
   }
   function replayHelp(kind) {
     if (helpJob) return helpJob;
-    if (kind !== "onboarding" && kind !== "tutorial") return Promise.resolve(false);
-    const nextPractice = run?.modeId === "what_comes_next";
+    if (!["onboarding", "tutorial", "counting"].includes(kind)) return Promise.resolve(false);
+    const activeTutorial = kind === "counting" ? null : run?.modeId === "what_came_before" ? window.SparkyBeforeTutorial : run?.modeId === "what_comes_next" ? window.SparkyNextTutorial : null;
     helpPlaying = true;
     stop();
     const root = document.getElementById("game-scene");
@@ -566,8 +585,8 @@
       try {
         scene()?.setPaused(false);
         if (kind === "onboarding") await window.SparkyIntro.play({ replay: true });
-        else if (nextPractice) {
-          await window.SparkyNextTutorial.startTutorial({ preview: true });
+        else if (activeTutorial) {
+          await activeTutorial.startTutorial({ preview: true });
           await scene().startMainGame();
         } else await window.SparkyTutorial.play();
         if (generation !== token) return false;
@@ -582,7 +601,7 @@
   async function preview(category, type) {
     const r = run;
     if (!debugEnabled || !r || !r.answering || r.busy || r.preview || D().state.paused) return false;
-    const allowed = { intro: ["welcome", "phone", "messing", "sleep", "funFact"], break: ["wizzle", "messi", "letsGo"], champion: ["champion"], tutorial: ["next"] };
+    const allowed = { intro: ["welcome", "phone", "messing", "sleep", "funFact"], break: ["wizzle", "messi", "letsGo"], champion: ["champion"], tutorial: ["next", "before"] };
     if (!allowed[category]?.includes(type)) return false;
     r.preview = `${category}:${type}`; r.busy = true; r.answering = false; controls(r);
     r.root.classList.add("main-presentation");
@@ -590,7 +609,7 @@
       await quiet(r);
       if (category === "intro") await owned(r, D().intro(type));
       else if (category === "break") await owned(r, D().breakInteraction(type, { phaseNumber: phaseNumber(r.question), preview: true }));
-      else if (category === "tutorial") { await nextTutorial(r, true); await owned(r, r.adapter.render(r.question, r)); }
+      else if (category === "tutorial") { await nextTutorial(r, true, type); await owned(r, r.adapter.render(r.question, r)); }
       else await owned(r, D().champion());
       return true;
     } catch (error) { if (error !== CANCELLED) report(error, "Debug preview"); return false; }
@@ -638,7 +657,10 @@
     for (const type of ["welcome", "phone", "messing", "sleep", "funFact"]) button(`Intro: ${type}`, () => preview("intro", type));
     for (const type of ["wizzle", "messi", "letsGo"]) button(`Break: ${type}`, () => preview("break", type));
     button("Champion preview", () => preview("champion", "champion"));
+    button("Onboarding intro", () => replayHelp("onboarding"));
+    button("Tutorial: Count & Kick", () => replayHelp("counting"));
     button("Tutorial: What Comes Next?", () => preview("tutorial", "next"));
+    button("Tutorial: What Came Before?", () => preview("tutorial", "before"));
     button("Give correct", () => solve(true)); button("Give wrong", () => solve(false));
     const details = (label, value) => {
       const element = document.createElement("details"), summary = document.createElement("summary"), pre = document.createElement("pre");
@@ -650,6 +672,8 @@
     details("All 84 fixed questions", window.SparkyProgression.fixedQuestions);
     details("All 20 successor phases", window.SparkyNextProgression.phases);
     details("All 100 successor questions", window.SparkyNextProgression.fixedQuestions);
+    details("All 20 predecessor phases", window.SparkyBeforeProgression.phases);
+    details("All 100 predecessor questions", window.SparkyBeforeProgression.fixedQuestions);
     r.root.append(panel); updateDebug();
   }
   function updateDebug() {

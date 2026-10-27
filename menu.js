@@ -47,7 +47,7 @@
   const menuAudioSources = new Set();
 
   async function prepareMenuAudio() {
-    if (["game", "intro", "tutorial", "next-tutorial", "lab"].includes(new URLSearchParams(location.search).get("scene"))) return;
+    if (["game", "intro", "tutorial", "next-tutorial", "before-tutorial", "lab"].includes(new URLSearchParams(location.search).get("scene"))) return;
     const Constructor = window.AudioContext || window.webkitAudioContext;
     if (!Constructor) return;
     menuAudioContext = new Constructor();

@@ -1,0 +1,74 @@
+/* Host supplies centered, contain-scaled 1365 × 768 stage coordinates. */
+.before-lesson { font-family: Fredoka, system-ui, sans-serif; }
+.before-lesson .tutorial-stage { isolation: isolate; }
+.before-lesson .tutorial-messi { display: none !important; }
+.before-lesson .tutorial-comic { left: 690px; top: 155px; width: 600px; height: 380px; z-index: 5; }
+.before-lesson .tutorial-comic > div { font-size: 104px; line-height: .96; }
+.before-lesson .tutorial-comic::before { inset: -65px -15px; }
+.before-lesson .tutorial-comic .before-ignore { display: block; font-size: 150px; letter-spacing: 2px; color: #fff6a3; transform: rotate(-5deg); }
+.before-lesson .tutorial-comic .before-ronaldo { display: block; font-size: 119px; color: #fff3a0; transform: rotate(-6deg); }
+.before-lesson .tutorial-confetti { z-index: 6; pointer-events: none; }
+
+/* Same decoded coach, above the movie and independent of world camera. */
+.before-lesson .before-coach { z-index: 3; pointer-events: none; transform-origin: 50% 75%; }
+/* Leave headroom for the scripted 1.045–1.08 push-ins and speaking bob.
+  Full sprite bounds stay inside the stage, not just the transparent PNG box. */
+.before-lesson .before-coach-hero { left: 15px !important; top: 85px !important; width: 640px !important; height: 640px !important; }
+.before-lesson .before-coach-close { left: 0 !important; top: 85px !important; width: 660px !important; height: 660px !important; }
+.before-lesson .before-coach-medium { left: 75px !important; top: 120px !important; width: 540px !important; height: 540px !important; }
+.before-cutaway::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 40% 45%, transparent 42%, #10234d40); }
+.tutorial-running:has(.before-cutaway) .quantity-display,
+.tutorial-running:has(.before-cutaway) .ball-choice-zone,
+.tutorial-running:has(.before-cutaway) .goal-zone { visibility: hidden !important; }
+.tutorial-running:has(.before-lesson) .tutorial-cinema { background: #ffc94f url("assets/comic-effect-bg/comic-bg-image.jpg") center / cover no-repeat; }
+.tutorial-running:has(.before-lesson) .tutorial-cinema video { position: absolute; inset: 0; }
+/* Field props participate in the fade; hiding them before its first frame
+  creates the abrupt empty-pitch flash. Finale props always stay hidden. */
+.before-transition:not(.tutorial-finale) .quantity-display,
+.before-transition:not(.tutorial-finale) .ball-choice-zone,
+.before-transition:not(.tutorial-finale) .goal-zone { visibility: visible !important; }
+.before-board-flash { filter: drop-shadow(0 0 12px #fff5a4) drop-shadow(0 0 25px #ffe56c); }
+.before-board-flash .panel-content { animation: before-board-glint .85s ease-in-out infinite alternate; }
+.before-ball-flash { filter: drop-shadow(0 0 16px #fff4a0) drop-shadow(0 0 30px #ffe45e); }
+.before-ball-cross { position: absolute; inset: -14px; z-index: 7; pointer-events: none; }
+.before-cross { width: 100%; height: 100%; overflow: visible; fill: none; stroke: #ef365d; stroke-width: 15px; stroke-linecap: round; filter: drop-shadow(0 4px 1px #15335370); }
+.before-cross .before-cross-rim { stroke: #fffcef; stroke-width: 25px; }
+.before-offscreen-look .tutorial-coach-art { transform: translateX(-8px) rotate(-5deg); transform-origin: 50% 90%; }
+
+.before-homework-panel { position: absolute; left: 725px; top: 60px; width: 600px; height: 645px; z-index: 4; pointer-events: none; transform-origin: 50% 60%; }
+.before-notebook { position: relative; width: 100%; height: 100%; }
+.before-notebook > svg { display: block; width: 100%; height: 530px; filter: drop-shadow(0 10px 0 #19304d20); }
+.before-notebook strong { position: absolute; left: 12px; right: 12px; bottom: 15px; text-align: center; color: #fff6a9; font: 400 66px/.95 Bangers, Impact, sans-serif; -webkit-text-stroke: 3px #142f50; paint-order: stroke fill; text-shadow: 4px 5px #142f50; transform: rotate(-4deg); }
+.before-previous-panel { position: absolute; left: 710px; top: 180px; width: 600px; height: 380px; padding: 25px 20px; box-sizing: border-box; border: 6px solid #153353; border-radius: 38px 18px 36px 20px; background: #fffbe7; box-shadow: 12px 14px 0 #153353, -8px -8px 0 #fff5aa; z-index: 4; transform: rotate(-2deg); pointer-events: none; }
+.before-panel-kicker { display: block; text-align: center; color: #22617d; font: 600 23px/1.2 Fredoka, sans-serif; letter-spacing: 4px; }
+.before-number-pair { display: flex; align-items: center; justify-content: center; gap: 20px; height: 240px; }
+.before-number-pair b { display: block; width: 160px; text-align: center; color: #ffcf59; font: 400 195px/1 Bangers, Impact, sans-serif; -webkit-text-stroke: 5px #153353; paint-order: stroke fill; text-shadow: 5px 6px #153353; }
+.before-number-pair .before-answer { color: #62e8da; }
+.before-number-pair svg { width: 130px; height: 90px; fill: none; stroke: #ef4465; stroke-width: 15px; stroke-linecap: round; stroke-linejoin: round; }
+.before-previous-panel > strong { display: block; text-align: center; color: #153353; font: 400 47px/1 Bangers, Impact, sans-serif; }
+.before-field-hint { position: absolute; left: 462px; top: 465px; width: 440px; text-align: center; color: #fff9c4; font: 600 27px/1.2 Fredoka, sans-serif; text-shadow: 0 3px 4px #123554; pointer-events: none; }
+
+/* Override counting's answer-2 guide without changing shared tutorial CSS. */
+.tutorial-running.tutorial-choosing:has(.before-lesson) .choice-ball:not([data-number="8"])::before,
+.tutorial-running.tutorial-choosing:has(.before-lesson) .choice-ball:not([data-number="8"])::after { content: none; }
+.tutorial-running.tutorial-choosing:has(.before-lesson) .choice-ball[data-number="8"]::before { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 20px 8px #fff59b99, 0 0 42px 16px #fff05c66; pointer-events: none; }
+.tutorial-running.tutorial-choosing:has(.before-lesson) .choice-ball[data-number="8"]::after { content: ""; position: absolute; width: 78px; height: 78px; left: 15px; top: -100px; background: url("assets/ui/finger-pointer.png") center / contain no-repeat; transform: scaleY(-1); filter: drop-shadow(0 4px 3px #123f6740); pointer-events: none; animation: before-guide .7s ease-in-out infinite alternate; }
+.tutorial-running:has(.before-lesson) .tutorial-lets-go[hidden] { display: none !important; }
+
+/* This is already a contain-scaled stage, not viewport-sized comic elements. */
+@media (max-width: 950px) and (orientation: landscape) {
+  .before-lesson .tutorial-comic > div { font-size: 108px; }
+  .before-panel-kicker { font-size: 25px; letter-spacing: 2px; }
+  .before-field-hint { font-size: 29px; }
+}
+.tutorial-paused .before-board-flash .panel-content,
+.tutorial-paused:has(.before-lesson) .choice-ball::after { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .before-board-flash .panel-content,
+  .tutorial-running.tutorial-choosing:has(.before-lesson) .choice-ball::after { animation: none !important; }
+  .before-lesson .tutorial-pose.is-sheet.is-current,
+  .before-lesson .tutorial-coach.is-speaking .tutorial-coach-art,
+  .before-lesson .tutorial-confetti i { animation: none !important; }
+}
+@keyframes before-guide { from { transform: translateY(0) scaleY(-1); } to { transform: translateY(10px) scaleY(-1); } }
+@keyframes before-board-glint { from { opacity: 1; } to { opacity: .68; } }

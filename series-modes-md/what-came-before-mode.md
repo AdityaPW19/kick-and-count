@@ -2,11 +2,15 @@
 
 ## Context
 
-Implement the **What Came Before** series mode within the existing preschool educational football game featuring Sparky.
+The user-approved **What Came Before** series mode is implemented within the
+existing preschool educational football game featuring Sparky. This document
+records its current gameplay contract and exact progression data.
 
 This is the third series mode managed by the Master Series Mode Controller, after Kick & Count and What Comes Next.
 
-Use the attached visual reference for the intended gameplay.
+The latest approved presentation uses the SAME What Comes Next sequence-board
+template, reversed into descending order (for example5,4,3…), not a single-number
+question board. The existing approved9->8 tutorial remains unchanged.
 
 The football field, goal, scoreboard, Sparky mascot, shooting mechanics, animations, sound systems, and core UI already exist.
 
@@ -18,14 +22,16 @@ The game loop, Sparky fun interactions, feedback systems, and additional behavio
 
 ## 1. Core Gameplay
 
-A number appears on the scoreboard above the goal.
+A descending sequence appears on the scoreboard above the goal. Its last numeral
+is the displayed starting number `n`; the player finds `n - 1`. Use
+`[n+2,n+1,n]`, truncated at99 rather than showing100/101.
 
 The player must identify the number that comes immediately before it.
 
 Example:
 
 ```text
-Scoreboard: 12
+Scoreboard: 14, 13, 12…
 
 Sparky:
 "What comes before 12?"
@@ -36,12 +42,22 @@ Football choices:
 Correct answer: 11
 ```
 
+For starter3 show5,4,3…; the first real question `before_001` has starter2,
+board4,3,2… and answer1. At the upper boundary, starter98 shows99,98… and
+starter99 shows99… with answer98. Keep the naturally measured centered text,
+colored tspans, comma-space separators and10px before the ellipsis from successor.
+
 When the child kicks the correct football:
 
 1. Play the existing successful shooting and goal animation.
 2. Update the scoreboard to show the correct predecessor.
 3. Play the appropriate existing Sparky success feedback.
 4. Continue to the next question after the feedback sequence completes.
+
+The adapter uses the existing successor `goal` hook:130ms content fade then180ms
+accepted-answer reveal at goal contact, asynchronously beside shared feedback.
+The answer holds until next-question/phase-exit clear. Wrong kicks keep the sequence.
+HUD title is What Came Before? and field instruction is Look. Before. Kick!
 
 For incorrect answers, use the existing unsuccessful kick and retry behavior.
 
@@ -69,35 +85,69 @@ Do not display 1 as the starting number because its predecessor would be 0, outs
 
 ## 3. Tutorial
 
+### Current approved9->8 lesson (preserved)
+
+The approved chat brief replaces the original3->2 placeholder: display **9**, choices
+**8, 10, 11**, answer **8**. Keep the existing guided ball/finger, super kick and
+goal treatment. The supplied previous-number dialogue drives the 10-ball rejection,
+IGNORE / Sunday-homework comic cutaway, one-step-back explanation and Ronaldo
+deadpan finale. The final **Done!** football passes to Sparky, then hits the screen
+using the existing wipe. No Ronaldo/Messi character appears in this lesson.
+
+On new-player onboarding this tutorial is introduced only after What Comes Next's
+Phase 2 Sparky interaction has finished and its checkpoint is acknowledged/committed.
+Legacy two-mode rotation uses the safe-boundary master migration described below.
+It stores its own completion key
+`sparky.tutorial.what-came-before.completed.v1`, never consumes a phase question,
+and never marks completion from developer previews or an interrupted lesson.
+
+**Current implementation:** gameplay is now approved and playable. Real Done/wipe
+starts `before_001` (or its saved unconsumed before question), not the old
+counting/successor route. A prior completed lesson flag is honored without replay.
+Pause Practice in before and hidden developer preview replay the lesson without
+consuming/rerolling progress and return to the exact active question/options.
+Direct `?scene=before-tutorial&tutorialSpeed=1..8` remains non-persisting and returns
+to menu after successful wipe; explicit stop stays put.
+
 Follow the existing Kick & Count tutorial implementation pattern, just as What Comes Next does.
 
 The tutorial must be short, visual, interactive, and easy for preschool children.
 
-Use a simple tutorial question:
+The implemented lesson question is:
 
 ```json
 {
   "modeId": "what_came_before",
   "isTutorial": true,
-  "displayedNumber": 3,
-  "correctAnswer": 2,
-  "options": [1, 2, 5],
-  "correctOptionIndex": 1
+  "displayedNumber": 9,
+  "correctAnswer": 8,
+  "options": [8, 10, 11],
+  "correctOptionIndex": 0
 }
 ```
 
 ### Tutorial steps
 
 1. Introduce the new activity using Sparky and the existing tutorial presentation system.
-2. Display the number 3 on the scoreboard.
-3. Ask the child to find the number immediately before 3.
-4. Display three footballs containing 1, 2, and 5.
-5. Follow the existing tutorial guidance pattern to help the child identify 2.
-6. Allow the child to kick the football containing 2.
+2. Display the number9 on the scoreboard (the lesson retains its own single-number board).
+3. Use the supplied20 previous-number lines, contextual9/10 highlights and saying-no/error/cross rejection of10.
+4. Preserve IGNORE/Sunday-homework comic panels and the one-step-back8 ←9 explanation.
+5. Display8/10/11 with existing guided finger/glow only on8; serialize wrong-tap hints.
+6. Allow the child to kick8; roll the retained ball to centre by rotating its image, not its bottom-origin body.
 7. Play the existing successful goal animation and feedback.
-8. Update the scoreboard from 3 to 2.
-9. Mark the tutorial as completed.
-10. Notify the Master Series Mode Controller to begin Phase 1.
+8. Update the scoreboard9->8; retain RONALDO!/IT'S DONE BRO! splashes and the deadpan finale.
+9. Preserve actual1400ms music silence, bounded nonlooping cricket and shy/restored-Lava beat; wait for Done/pass/screen-kick/wipe.
+10. Only after accepted8 and successful Done/wipe save completion; let master begin real predecessor Phase1 without consuming a question.
+
+Retain supplied sprites/audio, shared decoded caches and tutorial host, retained
+coach reparenting with exact parent/style restoration, viewport-captured seamless
+field/comic transitions and camera preparation under opaque comics. No intermediate
+wide/close bounce, goalpost flash or pose URL swaps. Finale hides pitch props before
+actor restoration; stop clears temporary opacity. Intro music switches (not layers)
+to Lava at hehe, uses shared ducking, stops for real silence, and cleans up on exit.
+The additional It's Done Bro cricket stops before the later silent beat. Pause,
+portrait, hidden tabs and cancellation freeze/clean audio/video/WAAPI/inputs together;
+reduced motion uses static art. Keep these established polish contracts unchanged.
 
 Use the supplied Sparky dialogue/audio assets and existing emotes.
 
@@ -262,7 +312,11 @@ What Came Before tutorial
   → Master Controller selects next mode
 ```
 
-During onboarding, the next mode will be Color Match.
+The eventual next onboarding mode is Color Match, but it has no implementation
+yet. Currently, after before's second acknowledged break, enter three-mode
+`available_rotation` (counting/next/before). Color Match, Find Missing Number and
+Reach the Target Score remain nonplayable/deferred; `availableOnboardingComplete`
+is true, `onboardingDeferred` is true and full-six `onboardingComplete` stays false.
 
 When What Came Before appears again during mixed gameplay, continue from Phase 3.
 
@@ -274,6 +328,13 @@ Important:
 - Do not start the next question during a Sparky interaction.
 - Do not implement an independent scheduling system inside this mode.
 - The Master Controller owns phase-break triggers and mode transitions.
+
+Fresh onboarding is counting tutorial + two phases/breaks (4+5 goals), successor
+tutorial + two phases/breaks (5+5), predecessor tutorial + two phases/breaks (5+5),
+then fair rotation. Count010 and next011 remain parked; before011 parks after its
+second break. Rotation uses configurable65% two-phase/35% one-phase runs and the
+lossless fair bag, including persisted `deferredModeId` for a singleton-current
+token borrowed across bag boundaries; never discard it or repeat adjacent runs.
 
 ## 7. Data Structure
 
@@ -307,7 +368,11 @@ Example:
 }
 ```
 
-Implement all 20 phases from the predefined progression table.
+All20 phases from the predefined progression table are implemented in
+[../game/progression/before-engine.js](../game/progression/before-engine.js), a pure
+browser/CommonJS `SparkyBeforeProgression` module using the successor progression
+template/API. Numeric resolved-question `difficulty` is1–4 (phase descriptors also
+carry the string label); option order is deterministic per fixed question seed.
 
 Each resolved question should look like:
 
@@ -321,13 +386,21 @@ Each resolved question should look like:
   "optionCount": 3,
   "options": [5, 1, 3],
   "correctOptionIndex": 1,
-  "difficulty": "very_easy"
+  "difficulty": 1
 }
 ```
+
+The option list above illustrates the shape, not the exact seeded options for
+`before_001`; use the engine's immutable fixed data as the runtime source.
 
 ## 8. Infinite Procedural Mode
 
 After completing all 100 predefined questions, switch this series mode to infinite procedural generation.
+
+The phase20 shared break must finish and `before_fixed_phase_20` be acknowledged
+before entering adaptive infinite phase21. Infinite IDs are `before_infinite_1`,
+`before_infinite_2`, etc.; every five successes has a distinct
+`before_infinite_5`, `before_infinite_10`, etc. checkpoint even though phaseId stays21.
 
 Do not restart the predefined phases.
 
@@ -358,6 +431,12 @@ Adapt difficulty based on the child's recent performance.
 
 Track first-attempt accuracy across the previous five completed questions.
 
+The engine evaluates once per five infinite completions:5/5 raises one difficulty
+level,3–4/5 holds,0–2/5 lowers one, clamped1–4. Infinite starts at level1 with fresh
+performance history; choices equal difficulty+2. Persist the last20 generated
+questions, excluding consecutive starters and recent starter+sorted-options
+configurations; a bounded deterministic fallback handles constant RNG without hangs.
+
 Gradually increase difficulty after sustained success.
 
 Reduce difficulty after repeated mistakes.
@@ -380,13 +459,38 @@ Switching modes must not reset progress.
 
 If the child exits during a question or phase, restore their saved position.
 
+Own progression key: `sparky-before-progression:v1`; lesson completion is separately
+`sparky.tutorial.what-came-before.completed.v1`. Counting and successor keep
+`sparky-counting-progression:v1` / `sparky-next-progression:v1` and
+`sparky.tutorial.completed.v1` / `sparky.tutorial.what-comes-next.completed.v1`.
+Welcome-film completion remains `sparky.intro.completed.v1`. Before's engine never
+reads or writes those other keys, the master key or tutorial flags.
+
+Master schema is version2 under the SAME `sparky-master-progression:v1` key.
+Validate original two-mode v1 data before extending its mode maps/route fields;
+preserve old route/quota/bag/history and pending break plan/commit without rerolling
+or rewriting engine saves/flags. `legacyIntroductionPending` bridges old available
+rotation: finish feedback and pending interaction/champion, honor the saved commit
+route, then introduce before only with no pending plan and an actual active-engine
+`status:'question'` snapshot. Missing snapshots are not safe-boundary proof. Park
+the old question unchanged and reuse a prior before completion flag if present.
+
+Persist master break plan BEFORE presentation, acknowledge the engine afterward,
+then commit master route. Reload after engine ack but before master commit completes
+the saved route without repeating the break. Wrong attempts never advance; accepted
+feedback locks input until `finishFeedback()` commits once after presentation.
+Interrupted accepted feedback recovers once on engine reconstruction; pending
+breaks remain pending. Normal return and `?scene=game` use master's current
+`activeModeId`/reconciled route, not forced counting.
+
 ## 10. UI and Animation
 
 Reuse the existing football gameplay scene.
 
 For What Came Before:
 
-- Show a single number on the scoreboard.
+- Show the successor template's descending sequence ending at the starter, bounded
+  to1–99: `[n+2,n+1,n]` truncated at99; first starter2 displays4,3,2… and accepts1.
 - Display 3–6 footballs carrying numerical answers.
 - Use existing shooting and goal animations.
 - Update the scoreboard to the predecessor after a successful kick.
@@ -397,6 +501,14 @@ For What Came Before:
 Do not modify the visual design or introduce new objects.
 
 ## 11. Validation
+
+Current automated suite: **178 passing tests**, including10,000 generated
+predecessor questions, exact100/20 predecessor data, all284 combined fixed questions
+and260 shared phases across three real engines, independent infinite streams,
+cross-save interruptions, original-v1 validation/migration/pending-plan preservation
+and lossless fair-bag/deferred-token reload coverage. Preserve existing desktop/
+landscape-mobile, actual audio/video, pause, cleanup and tutorial polish requirements;
+unit tests alone do not prove presentation quality.
 
 Automated tests must verify:
 
@@ -421,7 +533,11 @@ Automated tests must verify:
 
 **This is the same progression architecture as What Comes Next, with the mathematical rule reversed.**
 
-Do not create a separate gameplay engine.
+The pure per-mode progression module owns predecessor data, generator and save,
+just like successor. Do not create a separate presentation, physics, input,
+feedback, director or scheduling engine. The third adapter in
+[../game/main.js](../game/main.js) reuses counting entrance/render infrastructure
+and successor's exact goal hook; [../scene.js](../scene.js) owns sequence direction.
 
 Do not change existing football mechanics, UI, animations, mascot assets, or the shared game loop.
 

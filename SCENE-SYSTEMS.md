@@ -27,8 +27,9 @@ separate from the ordinary phase bag.
 # Kick & Count scene systems
 
 The menu leads into the welcome film and guided tutorial on first visits, then
-the playable counting journey. Returning players with both completion flags start
-their saved counting question after a short randomized session intro. The old
+the playable counting journey, followed by successor and predecessor onboarding.
+Returning players with both completion flags start their saved current-mode/master
+route after a short randomized session intro (not forced counting). The old
 coming-soon ending has been removed.
 
 ## Main counting mode
@@ -122,7 +123,7 @@ enables it for the full-adventure replay without changing first-visit storage.
 ## Preview
 
 - Play from the existing menu to enter the first-visit introduction after its exit transition.
-- `?scene=game` opens saved counting directly with a short session intro.
+- `?scene=game` opens the saved current-mode/master route with a short session intro.
 - `?scene=lab` opens the original field/camera/ball development lab.
 - `?scene=intro` forces the welcome film without changing first-visit storage.
 - `?scene=intro&introSpeed=8` is an accelerated development check, not player-facing timing.
@@ -161,7 +162,8 @@ from the placeholder sprite asset, so later sprite poses can share the camera.
 ## Display
 
 `window.SparkyScene.setDisplay({ count, width, variant })` returns its dimensions.
-Variants: `count`, `message`, `celebrate`. The SVG viewBox matches the generated
+Variants: `count`, `message`, `celebrate`, `number`, `sequence`; `direction` is
+`next` or `before` for sequences. The SVG viewBox matches the generated
 dimensions exactly: corners, frame trim and typography are not stretched. Quantity
 icons wrap to rows; larger quantities use a compact layout to remain above the goal
 without leaving the wide-shot screen. Message/celebration content is test copy only.
@@ -197,7 +199,8 @@ All assets and fonts are local. Before a first-visit handoff, all intro poses,
 audio buffers, splash/fallback artwork and Bangers are loaded; all six comic
 videos are fully fetched into retained blob URLs and their first frames validated.
 Later video scene changes use those downloaded URLs, not fresh network requests.
-Returning players with completed onboarding and practice skip directly to counting.
+Returning players with completed onboarding and counting practice skip directly to
+the saved master route; later series lessons are gated by their own completion flags.
 Missing audio in browsers without Web Audio uses pause-aware timed captions;
 blocked autoplay displays an explicit sound-start/silent-watch gate.
 
@@ -317,23 +320,114 @@ avoid blank frames; pause/portrait/tab visibility freeze its clock and media.
 
 `game/main.js` keeps one presentation/input/physics/director loop and selects a
 registry adapter from the master route. `modes.counting` retains its render/restore;
-`modes.what_comes_next` reuses that entrance and restores the sequence board.
+`modes.what_comes_next` and `modes.what_came_before` reuse that entrance and restore
+their directional sequence boards. All three share input, physics, director,
+feedback, pause/cancellation and help; no independent predecessor game loop exists.
 Optional adapter `goal(question, context)` animates sequence content into the answer
 at contact without delaying feedback start. `scene.setDisplay({variant:'sequence',
 number:12,width:540})` shows10,11,12…; number variant shows the single accepted answer.
 Sequence content is a naturally measured centered text run with colored tspans,
 comma-space separators and10px before the ellipsis; no widely spaced fixed columns.
 
+Predecessor uses `scene.setDisplay({variant:'sequence', number:n, width:540,
+direction:'before'})`: descending `[n+2,n+1,n]`, truncated at99. Thus3 shows
+5,4,3…; the first starter2 shows4,3,2… and accepts1;98 shows99,98…;99 shows99…
+and accepts98. Never render100/101 to fill the left side. The final numeral is
+the question's starter, not its answer. `modes.what_came_before.goal` is exactly
+`modes.what_comes_next.goal`:130ms fade and180ms accepted-answer reveal at goal
+contact, concurrent with shared feedback; answer holds until next clear. Wrong
+kicks preserve the sequence. HUD/instruction are What Came Before? / Look. Before. Kick!
+
 The master and engines have independent save keys. At phase end, main persists
 `master.planBreak()` before retiring board/balls, presents the existing director
 interaction, acknowledges the engine checkpoint, then calls `master.completeBreak()`.
 Stop/error leaves that plan/checkpoint pending. Startup finalizes an already-saved
 engine acknowledgment without replay. Counting phase17 retains its champion;
-all successor phases, including20, use the shared break.
+all successor and predecessor phases, including20, use the shared break.
 
-Each mode completes two opening phases before available-mode rotation. Remaining
-four registered modes are unplayable; six-mode onboarding is explicitly deferred.
+New-player onboarding is counting tutorial + two opening phases/breaks (4+5 goals),
+then successor tutorial + two phases/breaks (5+5), then predecessor tutorial + two
+phases/breaks (5+5), before `available_rotation`. Color Match, Find Missing Number
+and Reach the Target Score are the three remaining deferred/nonplayable modes;
+no color gameplay/tutorial is implemented. After the playable subset completes,
+`availableOnboardingComplete:true`, `onboardingDeferred:true`, `onboardingComplete:false`;
+do not equate available rotation with all-six completion.
 Current rotation uses a fair bag and configurable65% two-phase/35% one-phase quota.
+`deferredModeId` preserves a singleton bag token matching the current mode: borrow
+a different token from the next full bag, serve the deferred token on the next run,
+and never discard a token or repeat adjacent runs.
 Engines own exact questions and independent infinite difficulty; master only owns
 routing/checkpoint plans. Active Practice uses its approved tutorial without
-consuming/rerolling the saved question. Hidden debug includes both journeys and saves.
+consuming/rerolling the saved question. Hidden debug includes all three journeys and saves.
+
+Persistence: counting `sparky-counting-progression:v1`, successor
+`sparky-next-progression:v1`, predecessor `sparky-before-progression:v1`.
+[game/progression/before-engine.js](game/progression/before-engine.js) exports pure
+browser/CommonJS `SparkyBeforeProgression`, the successor progression template with
+the predecessor rule/data/IDs. It owns exact100 questions/20 five-question phases,
+then adaptive infinite phase21 after the final shared break acknowledgment. Starters
+2–99, answers1–98, unique choices1–99/3–6, seeded fixed options, saved current
+question/retries/checkpoints and last-five first-attempt adaptation stay independent.
+Infinite range weights20/20/25/20/15 cover2–10/11–20/21–50/51–75/76–99; recent
+configuration exclusions have a bounded constant-RNG fallback.
+
+Master schema is version2 under the SAME `sparky-master-progression:v1` key.
+Validate the original two-mode v1 shape before extending mode maps and route fields.
+Migration preserves old route/quota/bag/history and pending plan/commit decision,
+without rerolling or modifying engine saves/tutorial flags. `legacyIntroductionPending`
+bridges an old available rotation: finish feedback and any interaction/champion,
+honor/commit its saved route, then introduce before only with no pending plan and
+an actual active-engine `status:'question'` snapshot. Missing snapshots do not prove
+a safe boundary. Park that legacy question untouched; begin before's two-phase
+onboarding, reusing an existing before lesson completion flag rather than replaying.
+Master `activeModeId`/reconciled route determines the current mode on normal return
+and `?scene=game`; a URL entry must not reset it to counting.
+
+Current automated verification:178 tests pass, including10,000 generated predecessor
+questions, all284 combined fixed questions,260 shared phases/independent infinite
+streams, dual-store interruptions, same-key v1 migration and lossless deferred-token
+fairness/reload tests. Existing presentation/asset/pause quality contracts still apply;
+automated coverage alone is not evidence of visual/audio polish.
+
+### Approved What Came Before tutorial and gameplay handoff
+
+`tutorial-before.js` defines the retained-coach creative script and asset manifest;
+`tutorial-before.css` owns its comic panels/cartoon notebook/cross. The common
+`tutorial.js` host runs it with active-time say/wait/animate/cinema primitives,
+shared guided selection, `tutorialGoal()` and Done/pass/screen-kick finale. User
+approval now includes predecessor gameplay using the successor template with
+descending sequences; the existing9->8 tutorial choreography remains unchanged.
+
+Board9/choices8,10,11 are independent of gameplay. The10 rejection uses the supplied
+saying-no pose/error SFX; IGNORE/homework comic cutaways reparent the existing actor
+and restore exact world parent/styles. The explanation shows8 ←9. The accepted8
+reuses super kick/goal and updates boardto8. Final Ronaldo/Done boast intentionally
+stops the music source, waits1400 active milliseconds in silence, briefly plays
+crickets, then resumes Lava for the embarrassed line/Done CTA. Only the requested
+dialogues play; there is no new voice/TTS. Video/CSS/WAAPI/audio/inputs freeze together.
+
+`SparkyBeforeTutorial` mirrors the successor lifecycle, with its own completion key
+`sparky.tutorial.what-came-before.completed.v1`. Completion requires accepted8 and
+the final Done/wipe; preview/stop never writes it. New-player master onboarding
+introduces it only after successor's acknowledged/committed second phase break;
+legacy rotation follows the v2 safe-boundary bridge above. Real Done now starts
+`before_001` (or its saved unconsumed before question), not the old two-mode route.
+The lesson never consumes a phase question; fresh onboarding parks count010/next011.
+After two predecessor phases/breaks, before011 parks and three-mode rotation begins.
+Pause Practice in before replays this lesson as a preview and restores the exact
+question/options; hidden developer preview is likewise non-persisting. Direct
+`?scene=before-tutorial&tutorialSpeed=4` still returns to menu after successful wipe,
+without starting gameplay; explicit stop stays put. Game stop cancels the actual
+owning tutorial controller. Other tutorial flags/saves stay intact: counting
+`sparky.tutorial.completed.v1`, successor `sparky.tutorial.what-comes-next.completed.v1`,
+onboarding `sparky.intro.completed.v1`.
+
+Predecessor field/comic transitions use the host's `transitionCoach(change, options)`:
+capture current screen geometry, prepare destination camera while covered, reparent,
+then animate from captured bounds to target alongside the backdrop/field-prop fade.
+The lesson returns directly into the intended camera shot, never revealing an
+intermediate wide/close shot. `before-transition` allows props to crossfade rather
+than vanish, except finale always hides them before actor restoration. Comic-to-comic
+changes remain opaque. Stop removes temporary shared field opacity. The centre-ball
+roll rotates only the image, never its bottom-anchored body. Cricket audio now also
+plays during the It's Done Bro line; source stops before the genuine silence beat.

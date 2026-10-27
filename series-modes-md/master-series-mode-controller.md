@@ -6,11 +6,14 @@ We are building a preschool educational football game featuring Sparky.
 
 The core gameplay, football kicking mechanics, shooting animations, goal feedback, mascot assets and the Kick & Count tutorial already exist.
 
-We now need a **Master Series Mode Controller** to manage multiple educational modes within the same continuous game experience.
+The implemented **Master Series Mode Controller** manages counting, successor and
+approved predecessor gameplay within the same continuous game experience. This
+document records the current contract and the explicitly deferred six-mode target.
 
 Do not rebuild existing gameplay systems. Reuse them.
 
-The complete game loop, fun interactions, Sparky feedback and additional behaviors will be provided separately in chat prompts. Keep integration points flexible for those implementations.
+The shared game loop, director fun interactions and Sparky feedback already exist.
+Keep integration points flexible for later approved behaviors and the three deferred modes.
 
 ## 1. Supported Series Modes
 
@@ -25,18 +28,25 @@ The game will contain six series modes:
 
 Each mode will have its own tutorial, predefined phases, question generator and difficulty progression.
 
-For now, only integrate the existing Kick & Count mode and the new What Comes Next mode. Register the remaining four as future modes with integration interfaces, but do not invent their mechanics or data.
+Currently integrate Kick & Count, What Comes Next and the user-approved What Came
+Before gameplay. Register Color Match, Find Missing Number and Reach the Target
+Score as deferred, nonplayable future modes; do not invent their mechanics or data.
 
-### Current two-mode implementation
+### Current three-mode implementation
 
-Both implemented modes share the same pitch, kick/feedback loop and director breaks.
+All three implemented modes share the same pitch, physics, kick/feedback loop and director breaks.
 After counting's opening two phases/breaks, play the approved successor tutorial
-once and its opening two phases/breaks. While the other four modes are unavailable,
-rotate only these two playable adapters using the 65% two-phase / 35% one-phase
-schedule below, preserving both mode saves. This provisional state is recorded as
+once and its opening two phases/breaks, then the existing approved predecessor9->8
+tutorial and its opening two phases/breaks. Real predecessor Done starts `before_001`,
+not an old counting/successor route. Its gameplay uses the successor template with
+descending sequences (5,4,3…); it does not replace or rewrite that polished lesson.
+While the other three modes are unavailable, rotate only these three playable
+adapters using the 65% two-phase / 35% one-phase schedule below, preserving all
+three mode saves. This state is recorded as
 `available_rotation`, **not** six-mode onboarding completion: `onboardingComplete`
-remains false and `onboardingDeferred` records the unavailable tutorials. No future
-mode, tutorial, or question is fabricated. The registry keeps those modes nonplayable.
+remains false; after the three opening journeys `availableOnboardingComplete:true`
+and `onboardingDeferred:true`. No future mode, tutorial, or question is fabricated;
+Color Match has no implementation. The registry keeps all three future modes nonplayable.
 
 The master save owns routing/quota/shuffle-bag and a durable pending break plan;
 per-mode saves own their questions. Persist the plan before presentation, acknowledge
@@ -44,9 +54,33 @@ the mode checkpoint after presentation, then commit the planned route. On reload
 an already-acknowledged engine checkpoint commits its pending route without replaying
 that break. Counting's existing phase-17 champion substitutes for its final checkpoint.
 
+### Save version and legacy migration
+
+[../game/progression/master.js](../game/progression/master.js) uses schema **version2**
+under the SAME `sparky-master-progression:v1` storage key. Do not rename the key or
+interpret its suffix as the current schema version. Validate the original two-mode
+v1 schema first, then extend tutorial/intro/checkpoint maps with predecessor entries
+and route fields with `deferredModeId`/`legacyIntroductionPending`.
+
+Preserve the old active route, quota, bag, completed-break history and any durable
+pending plan, including its commit route/action. Never reroll or replace that plan.
+Migration writes only the master key; engine saves and tutorial flags stay untouched.
+Malformed original v1 data must be rejected before augmentation.
+
+Old available rotation carries `legacyIntroductionPending:true`. Pending feedback,
+interaction/champion and saved plans win: finish/acknowledge the interaction, commit
+its original selected route, then introduce predecessor only at a safe question
+boundary (no pending master plan and an actual active-engine `status:'question'`
+snapshot). Missing snapshots are not safe-boundary proof. Park the old question
+unchanged and begin predecessor's two-phase onboarding run. A saved predecessor
+lesson completion flag is reused; completed older lessons never replay. Reload must
+preserve the bridge and engine-ack/master-pending recovery without duplicate breaks.
+
 ## 2. First-Time Onboarding Progression
 
-When a child plays for the first time, introduce the six modes sequentially.
+The complete future target introduces all six modes sequentially. The current
+playable subset introduces the first three in that same order, then enters
+`available_rotation` while the final three remain deferred.
 
 The initial order must be:
 
@@ -80,10 +114,17 @@ Kick & Count tutorial (already implemented)
   → Phase 2 (5 questions)
   → Sparky interaction
   → What Came Before tutorial
-  → ...
+  → Phase 1 (5 questions)
+  → Sparky interaction
+  → Phase 2 (5 questions)
+  → Sparky interaction
+  → Available rotation: counting / next / before
+  (Color Match and the remaining two introductions are deferred)
 ```
 
-**Important:** All six tutorials must be completed before entering mixed-mode progression.
+**Important:** Full six-mode mixed onboarding requires all six tutorials and opening
+phases. Current three-mode `available_rotation` is deliberately not that completion;
+`onboardingComplete` stays false until the deferred modes are implemented and introduced.
 
 The tutorial for Kick & Count is already implemented. Preserve it, including any existing completion state.
 
@@ -117,6 +158,14 @@ After a mode's tutorial is completed, never automatically replay it during norma
 
 Provide an explicit reset/replay option through developer controls for testing.
 
+Current Pause Practice selects the active counting/next/before lesson and restores
+the exact saved question/options without consuming or rerolling it. Hidden tutorial
+previews do the same. Direct `?scene=before-tutorial` is non-persisting and returns
+to menu after Done/wipe; only real before onboarding starts predecessor gameplay.
+Preserve the approved9->8 lesson's assets, audio, seamless camera/actor transitions,
+silence/cricket timing, goal and Done/pass/wipe contracts; gameplay approval is not
+permission to simplify the tutorial.
+
 ## 4. Sparky Fun Interaction Checkpoints
 
 After every completed phase, trigger a Sparky fun interaction.
@@ -140,9 +189,10 @@ Example context:
 }
 ```
 
-The Sparky interaction system will be explained separately.
-
-For now, implement the checkpoint events, pause/resume behavior and safe callback handling.
+The existing director supplies the shared Wizzle/Messi/Let's Go interactions and
+counting champion. The interface above is conceptual; current main integration
+uses durable `planBreak()`/engine acknowledgment/`completeBreak()` around director
+presentation, with checkpoint events, pause/resume and safe callback handling.
 
 Rules:
 
@@ -159,7 +209,10 @@ Keep the break system separate from the individual series modes.
 
 ## 5. Mixed Series Progression
 
-Once all six introductory tutorials and their initial two phases have been completed, transition into mixed-mode gameplay.
+The full target transitions into mixed-mode gameplay after all six introductory
+tutorials and their initial two phases. The implemented provisional scheduler uses
+the same rules for its three available modes after their introductions; it does
+not claim all-six completion.
 
 From this point onward:
 
@@ -183,6 +236,12 @@ A Sparky interaction still occurs after each phase, including when the next phas
 
 Use a fair shuffle-bag or similar scheduler so all available modes appear regularly.
 
+The implemented bag persists `deferredModeId`: if the only remaining token equals
+the current mode, defer that token, borrow a different mode from the next full bag,
+then serve the deferred token on the following run without consuming another bag
+token. Persist this in pending commit routes too. Never discard the singleton or
+starve a mode to avoid an adjacent repeat; bounded fairness survives reloads.
+
 Avoid pure random mode selection that could accidentally ignore some modes for long periods.
 
 The first cycle after onboarding should preferably cover every available mode before repeating one.
@@ -194,8 +253,13 @@ Each mode owns its own predefined question and phase sequence.
 For example:
 
 - Kick & Count has 84 predefined questions across 17 phases.
-- What Comes Next will have its own predefined question journey.
-- The remaining modes will provide their configurations separately.
+- What Comes Next has100 predefined questions across20 five-question phases, then
+  independent adaptive infinite phase21.
+- What Came Before has100 predefined questions across20 five-question phases, then
+  independent adaptive infinite phase21 after its phase20 shared break acknowledgment.
+  Its pure per-mode module uses the same successor progression template/API; the
+  shared presentation/physics/controller loop is not duplicated.
+- The three deferred modes will provide their configurations separately.
 
 When a mode is selected, continue from its saved phase and question position.
 
@@ -207,7 +271,7 @@ Other modes must continue with their own remaining predefined questions until co
 
 ## 7. Infinite Mixed Gameplay
 
-Each mode must expose:
+The conceptual future integration interface is:
 
 ```ts
 getNextQuestion()
@@ -215,6 +279,11 @@ hasPredefinedQuestionsRemaining()
 generateInfiniteQuestion()
 getDifficultyState()
 ```
+
+Current pure counting/next/before engines expose `state`, `currentQuestion()`,
+`attempt()`, `finishFeedback()`, `completeInteraction()` and `subscribe()`;
+counting also exposes `completeCelebration()`. Generator functions/data are module
+exports. Do not invent extra runtime methods or duplicate generator logic in master.
 
 When a mode exhausts its predefined questions:
 
@@ -272,7 +341,8 @@ interface SeriesMode {
 }
 ```
 
-The master controller must not know how to generate a counting, successor, color or arithmetic question.
+The master controller must not know how to generate a counting, successor,
+predecessor, color or arithmetic question.
 
 It should only determine:
 
@@ -304,6 +374,12 @@ Persist at minimum:
       "nextQuestionId": 1,
       "nextPhaseId": 1,
       "predefinedCompleted": false
+    },
+    "what_came_before": {
+      "tutorialCompleted": false,
+      "nextQuestionId": 1,
+      "nextPhaseId": 1,
+      "predefinedCompleted": false
     }
   },
   "pendingSparkyInteraction": null,
@@ -311,7 +387,27 @@ Persist at minimum:
 }
 ```
 
-The actual stored schema may differ, but it must include enough information to resume safely.
+The JSON above is a conceptual future-facing sketch, not the current serialized
+schema. Actual v2 master state owns `activeModeId`, `stage`, tutorial/intro maps,
+`run`, `bag`, `deferredModeId`, `legacyIntroductionPending`, `pendingBreak`,
+`lastCompletedBreakId` and per-mode `lastCompletedCheckpoints`; it never duplicates
+engine question progress. It must include enough information to resume safely.
+
+Current storage keys:
+
+- Master: `sparky-master-progression:v1` (schema2).
+- Counting: `sparky-counting-progression:v1`.
+- Successor: `sparky-next-progression:v1`.
+- Predecessor: `sparky-before-progression:v1`.
+- Welcome film: `sparky.intro.completed.v1`.
+- Counting lesson: `sparky.tutorial.completed.v1`.
+- Successor lesson: `sparky.tutorial.what-comes-next.completed.v1`.
+- Predecessor lesson: `sparky.tutorial.what-came-before.completed.v1`.
+
+Normal returning entry and `?scene=game` use the reconciled master/current-mode
+route, not forced counting. Fresh onboarding parks count010 while next plays,
+then next011 while before plays; before011 parks after its second break. Switching
+or replaying Practice never rewinds these independent saves.
 
 Never accidentally restart the child from the first tutorial or first phase after switching modes or reopening the game.
 
@@ -319,7 +415,9 @@ Persist mode selection state so a saved session resumes consistently.
 
 ## 11. Future Game Loop Integration
 
-The complete game loop, Sparky fun interactions, feedback behavior and mode-specific mechanics will be provided in later prompts.
+Reuse the implemented shared loop, director interactions, feedback and three mode
+adapters. Only additional approved behaviors and the deferred modes' mechanics
+belong to future prompts; no Color Match implementation is implied.
 
 Do not assume or implement features that have not yet been specified.
 
@@ -328,6 +426,14 @@ Provide clean integration points for future instructions.
 The controller should be reusable without requiring major changes when the remaining modes are implemented.
 
 ## 12. Validation
+
+Current automated suite: **178 passing tests**, including predecessor's10,000
+generated questions, all284 combined fixed questions and260 shared phases across
+three real engines, independent infinite streams, dual-store interruptions,
+validated original two-mode v1 migration/preserved pending plans and lossless
+deferred-token fairness through reloads. Preserve existing visual/audio, landscape,
+pause/cancellation and tutorial-polish requirements; unit tests do not establish
+presentation quality by themselves.
 
 Test:
 
